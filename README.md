@@ -1,310 +1,254 @@
-# VibeGraph - Social Taste & Culture Platform
+# VibeGraph - Minimal Feed UI
 
-AI-powered platform for discovering your aesthetic identity through cultural connections across books, music, fashion, films, and art.
+A clean, minimal React feed page UI with shadcn-style design system, Tailwind CSS, and masonry layout.
 
-## 🎨 Project Overview
+## 🚀 Quick Start
 
-VibeGraph transforms passive recommendation into social cultural discovery by:
+```bash
+# Install dependencies
+npm install
 
-- **Cross-domain Taste Mapping**: Understanding aesthetic preferences across books, music, fashion, films, and art
-- **AI-Powered Vibe Spaces**: Connecting users through shared cultural energy
-- **Social Discovery**: Every recommendation becomes a social object for discussion and engagement
-- **Taste Graph Analytics**: Building unified aesthetic profiles
+# Run development server
+npm run dev
+```
 
-## 🚀 Tech Stack
-
-- **Framework**: React 18 + Vite
-- **Routing**: React Router v6
-- **Animation**: Framer Motion
-- **Icons**: Lucide React
-- **Styling**: Custom CSS with CSS Variables
-- **State Management**: React Context API
+Open your browser to `http://localhost:5173`
 
 ## 📁 Project Structure
 
 ```
-vibegraph-app/
-├── src/
-│   ├── components/         # Reusable UI components
-│   │   ├── Button/
-│   │   ├── Card/
-│   │   ├── Input/
-│   │   ├── Modal/
-│   │   ├── Navbar/
-│   │   ├── Sidebar/
-│   │   ├── FileUpload/
-│   │   ├── Loader/
-│   │   ├── EmptyState/
-│   │   ├── ProtectedRoute.jsx
-│   │   └── index.js
-│   ├── pages/              # Page components
-│   │   ├── Login.jsx
-│   │   ├── Signup.jsx
-│   │   ├── Dashboard.jsx
-│   │   ├── Profile.jsx
-│   │   ├── Notifications.jsx
-│   │   ├── DiscoverList.jsx
-│   │   └── NotFound.jsx
-│   ├── layouts/            # Layout wrappers
-│   │   ├── AuthLayout.jsx
-│   │   └── DashboardLayout.jsx
-│   ├── contexts/           # React Context providers
-│   │   ├── AuthContext.jsx
-│   │   └── ThemeContext.jsx
-│   ├── services/           # API integration
-│   │   └── api.js
-│   ├── utils/              # Utility functions
-│   │   └── helpers.js
-│   ├── hooks/              # Custom React hooks
-│   │   └── index.js
-│   ├── styles/             # Global styles
-│   │   └── index.css
-│   ├── App.jsx             # Main app component
-│   └── main.jsx            # Entry point
-├── public/                 # Static assets
-├── index.html              # HTML template
-├── package.json
-├── vite.config.js
-├── .env.example
-└── README.md
+src/
+├── App.jsx                    # Main app layout
+├── index.css                  # Tailwind + custom styles
+├── main.jsx                   # Entry point
+└── components/
+    ├── Sidebar.jsx            # Left navigation sidebar
+    ├── FeedPage.jsx           # Main feed container
+    ├── FeedSection.jsx        # Section with masonry grid
+    ├── SectionHeader.jsx      # Section title + count
+    └── MediaCard.jsx          # Placeholder card component
+
+tailwind.config.js             # Tailwind configuration
+postcss.config.js              # PostCSS configuration
 ```
 
-## 🛠️ Getting Started
+## 🎨 Design System
 
-### Prerequisites
+### Colors (shadcn-style)
+- Uses HSL color system with CSS variables
+- Full dark mode support
+- Neutral, minimal palette
+- Semantic color tokens (background, foreground, muted, accent, etc.)
 
-- Node.js 18+ and npm/yarn
+### Typography
+- **Display**: Instrument Serif (headings, logo)
+- **Body**: Inter (UI text)
+- Clean, readable hierarchy
 
-### Installation
+### Layout
+- **Sidebar**: Fixed 256px width
+- **Feed**: Masonry grid (4 → 3 → 2 → 1 columns responsive)
+- **Cards**: Variable heights for Pinterest-like feel
 
-1. **Clone or extract the project**
+## 🧩 Components
 
-2. **Navigate to project directory**
-   ```bash
-   cd vibegraph-app
-   ```
+### Sidebar
+- Clean minimal navigation
+- App logo at top
+- Navigation items with icons
+- Hover states
+- Settings at bottom
 
-3. **Install dependencies**
-   ```bash
-   npm install
-   ```
+### FeedPage
+- Sticky header with title
+- Multiple sections (Music, Movies, Art, Fashion, Books)
+- Generates mock data automatically
 
-4. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` and configure your API endpoints and AWS settings.
+### FeedSection
+- Section header with title and count
+- "View all" button
+- Masonry grid layout
 
-5. **Start development server**
-   ```bash
-   npm run dev
-   ```
+### MediaCard
+- Placeholder blocks (no real images)
+- Variable heights: small, medium, large, xlarge
+- Skeleton loading effect
+- Shimmer animation
+- Tag badges
+- Hover effects
+- Rounded corners + soft shadows
 
-6. **Open in browser**
-   Navigate to `http://localhost:3000`
-
-### Build for Production
-
-```bash
-npm run build
-```
-
-Preview production build:
-```bash
-npm run preview
-```
+### SectionHeader
+- Section title
+- Item count badge
+- "View all" link
 
 ## 🎯 Features
 
-### Implemented (Placeholder UI)
+### Masonry Layout
+- CSS column-based masonry
+- Responsive breakpoints
+- Different card heights for visual interest
+- No JavaScript required
 
-✅ **Authentication System**
-- Login/Signup pages with form validation
-- Protected routes
-- Auth context for state management
+### Placeholder Design
+- Gradient backgrounds instead of images
+- Skeleton text placeholders
+- Shimmer loading animation
+- Clean, minimal aesthetic
 
-✅ **Dashboard**
-- Stats overview (Vibe Score, Connections, Saved Items, Growth)
-- Vibe Spaces preview
-- Recent activity feed
-- AI-powered recommendations section
+### Responsive
+- **Desktop (1280px+)**: 4 columns
+- **Laptop (1024px-1280px)**: 3 columns
+- **Tablet (640px-1024px)**: 2 columns
+- **Mobile (<640px)**: 1 column
 
-✅ **Profile & Settings**
-- User profile management
-- Avatar upload placeholder
-- Vibe profile visualization
-- Category scores
+### Dark Mode Ready
+- Toggle by adding `dark` class to `<html>` element
+- All colors adapt automatically
+- Smooth transitions
 
-✅ **Notifications**
-- Notification feed
-- Unread indicators
-- Activity types (likes, comments, follows, matches)
+## 🛠️ Tech Stack
 
-✅ **Discovery/List View**
-- Grid/List view toggle
-- Search functionality
-- Filter options
-- Category-based browsing
+- **React 18** - UI library
+- **Vite** - Build tool
+- **Tailwind CSS** - Styling
+- **Lucide React** - Icons
+- **Framer Motion** - Animations (already installed)
 
-✅ **Design System**
-- Responsive layouts
-- Dark mode support
-- Smooth animations
-- Consistent spacing and typography
-- Reusable component library
+## 📊 Mock Data
 
-### Ready for Integration
+Located in `src/components/FeedPage.jsx`:
 
-🔄 **API Integration Points**
-- All API endpoints defined in `src/services/api.js`
-- Ready to connect to AWS backend (AppSync, Lambda, DynamoDB)
-- Environment variable configuration
-
-🔄 **AWS Services (Future)**
-- S3: User uploads & taste graph storage
-- DynamoDB: User data & preferences
-- Bedrock: AI recommendations
-- Personalize: Recommendation engine
-- AppSync/API Gateway: GraphQL/REST APIs
-
-## 🎨 Design Philosophy
-
-The UI uses a **refined, culturally-aware aesthetic**:
-
-- **Typography**: Instrument Serif for display, Inter for body text
-- **Colors**: Vibrant yet sophisticated palette with gradients
-- **Animations**: Smooth Framer Motion transitions
-- **Layout**: Clean, spacious, content-first design
-- **Responsive**: Mobile-first approach
-
-## 🔐 Authentication Flow
-
-Current implementation uses **mock authentication** with localStorage. Replace with AWS Cognito:
-
-1. Update `AuthContext.jsx` with Cognito SDK
-2. Configure AWS credentials in `.env`
-3. Update API service with proper auth headers
-
-## 📝 Key Components
-
-### Reusable Components
-
-- **Button**: Multiple variants (primary, secondary, outline, ghost, gradient)
-- **Input**: Form inputs with icons and validation
-- **Card**: Flexible card component with variants
-- **Modal**: Accessible modal dialogs
-- **Loader**: Loading states (inline and full-screen)
-- **EmptyState**: Placeholder for empty states
-
-### Layout Components
-
-- **AuthLayout**: Centered auth forms with animated background
-- **DashboardLayout**: Sidebar + navbar layout
-- **ProtectedRoute**: Route guard for authenticated pages
-
-## 🎣 Custom Hooks
-
-- `useMediaQuery`: Responsive breakpoints
-- `useLocalStorage`: Persistent state
-- `useDebounce`: Debounced values
-- `useClickOutside`: Detect outside clicks
-- `useAsync`: Async operation handling
-- `useToggle`: Boolean state toggle
-- `useWindowSize`: Window dimensions
-
-## 🌐 Routing Structure
-
-```
-/ → /dashboard (redirect)
-/login → Login page
-/signup → Signup page
-/dashboard → Main dashboard
-/discover → Discovery page
-/profile → User profile
-/settings → Settings (uses Profile)
-/notifications → Notifications
-/spaces → Vibe Spaces
-/books → Books category
-/music → Music category
-/fashion → Fashion category
-/films → Films category
-/art → Art category
-/messages → Messages (placeholder)
-* → 404 page
+```javascript
+const sections = [
+  { title: 'Music', items: 12 },
+  { title: 'Movies', items: 10 },
+  { title: 'Art', items: 14 },
+  { title: 'Fashion', items: 8 },
+  { title: 'Books', items: 9 },
+];
 ```
 
-## 🚀 Next Steps
-
-### Backend Integration
-
-1. **Set up AWS Services**
-   - Configure Cognito user pool
-   - Set up DynamoDB tables
-   - Deploy Lambda functions
-   - Configure S3 buckets
-
-2. **Replace Mock Data**
-   - Connect API service to real endpoints
-   - Implement real-time updates with AppSync
-   - Add file upload to S3
-
-3. **AI Integration**
-   - Connect to AWS Bedrock for recommendations
-   - Implement taste graph analysis
-   - Add vibe matching algorithm
-
-### Feature Development
-
-1. **Social Features**
-   - Comments and discussions
-   - User-to-user messaging
-   - Moodboard creation
-   - Content sharing
-
-2. **Content Management**
-   - CRUD operations for content
-   - Save/bookmark functionality
-   - Collections and lists
-
-3. **Advanced Features**
-   - Real-time notifications
-   - Search with filters
-   - Advanced analytics
-   - Recommendation explanations
+Each item has:
+- Random height (small/medium/large/xlarge)
+- Category-specific tags
+- Placeholder title
+- Metadata indicators
 
 ## 🎨 Customization
 
-### Themes
-
-Edit CSS variables in `src/styles/index.css`:
-
+### Change Masonry Columns
+Edit `src/index.css`:
 ```css
-:root {
-  --color-primary: #FF6B9D;
-  --color-secondary: #4ECDC4;
-  /* ... more variables */
+.masonry-grid {
+  column-count: 4; /* Change to 3 or 5 */
 }
 ```
 
-### Components
+### Add New Section
+Edit `src/components/FeedPage.jsx`:
+```javascript
+const sections = [
+  // ... existing sections
+  { title: 'Photography', items: generateMockItems('photography', 10) },
+];
+```
 
-All components are modular and accept props for customization. Check component files for available props.
+### Modify Card Heights
+Edit `src/components/MediaCard.jsx`:
+```javascript
+const heightClasses = {
+  small: 'h-48',   // 192px
+  medium: 'h-64',  // 256px
+  large: 'h-80',   // 320px
+  xlarge: 'h-96',  // 384px
+};
+```
 
-## 📚 Resources
+### Change Color Scheme
+Edit `src/index.css` `:root` variables:
+```css
+:root {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 3.9%;
+  /* ... etc */
+}
+```
 
-- [React Documentation](https://react.dev)
-- [Vite Documentation](https://vitejs.dev)
-- [Framer Motion](https://www.framer.com/motion/)
-- [React Router](https://reactrouter.com)
+## 🌙 Enable Dark Mode
 
-## 🤝 Contributing
+Add to your HTML or use JavaScript:
+```javascript
+document.documentElement.classList.add('dark');
+```
 
-This is a starter template. Feel free to modify and extend it for your needs!
+## 🚫 What's NOT Included
 
-## 📄 License
+- No backend/API
+- No authentication
+- No routing (single page)
+- No real images
+- No user interactions (likes, saves)
+- No data fetching
 
-MIT License - feel free to use this template for your projects.
+This is a pure UI foundation ready to be extended.
+
+## 📦 Dependencies
+
+```json
+{
+  "react": "^18.3.1",
+  "react-dom": "^18.3.1",
+  "lucide-react": "^0.344.0",
+  "framer-motion": "^11.0.5"
+}
+```
+
+```json
+{
+  "tailwindcss": "latest",
+  "postcss": "latest",
+  "autoprefixer": "latest"
+}
+```
+
+## 🎯 Design Inspiration
+
+- **Vercel**: Clean, minimal, premium feel
+- **Linear**: Smooth interactions, subtle animations
+- **shadcn/ui**: Component design patterns
+- **Pinterest**: Masonry layout
+
+## 📝 Next Steps
+
+To extend this UI:
+
+1. **Add real images**: Replace gradient placeholders
+2. **Add routing**: React Router for navigation
+3. **Add interactions**: Click handlers, likes, saves
+4. **Add filtering**: Filter by category/tag
+5. **Add search**: Search functionality
+6. **Connect backend**: API integration
+7. **Add infinite scroll**: Load more items
+8. **Add detail views**: Modal or page for each item
+
+## 🤝 Component Reusability
+
+All components are designed to be:
+- Self-contained
+- Easy to extend
+- Prop-driven
+- Styled with Tailwind
+- No external CSS files needed
+
+## 📱 Mobile Optimized
+
+- Touch-friendly tap targets
+- Responsive typography
+- Single column on mobile
+- Optimized spacing
 
 ---
 
-**Built with ❤️ for the VibeGraph platform**
+Built with ❤️ using React + Tailwind CSS

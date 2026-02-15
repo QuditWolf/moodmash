@@ -7,3 +7,5 @@ export { default as EmptyState } from './EmptyState/EmptyState';
 export { default as Navbar } from './Navbar/Navbar';
 export { default as Sidebar } from './Sidebar/Sidebar';
 export { default as FileUpload } from './FileUpload/FileUpload';
+export { default as FeedCard } from './FeedCard/FeedCard';
+export { default as FeedSection } from './FeedSection/FeedSection';
