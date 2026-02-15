@@ -1,0 +1,17 @@
+.app {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.app-main {
+  flex: 1;
+  margin-left: 260px;
+  overflow-y: auto;
+}
+
+@media (max-width: 1024px) {
+  .app-main {
+    margin-left: 0;
+  }
+}
