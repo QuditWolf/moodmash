@@ -1,0 +1,46 @@
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.card-default {
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-border);
+}
+
+.card-elevated {
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.card-outline {
+  padding: var(--spacing-lg);
+  border: 2px solid var(--color-border);
+  box-shadow: none;
+}
+
+.card-glass {
+  padding: var(--spacing-lg);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] .card-glass {
+  background: rgba(26, 26, 26, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-hoverable {
+  cursor: pointer;
+}
+
+.card-clickable {
+  cursor: pointer;
+}
+
+.card-clickable:active {
+  transform: scale(0.98);
+}

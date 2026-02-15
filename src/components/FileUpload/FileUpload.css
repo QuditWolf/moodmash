@@ -1,0 +1,101 @@
+.file-upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.file-upload-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.file-upload-dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-3xl);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.file-upload-dropzone:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-elevated);
+}
+
+.file-upload-dropzone.active {
+  border-color: var(--color-primary);
+  background: rgba(255, 107, 157, 0.05);
+}
+
+.file-upload-icon {
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+.file-upload-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.file-upload-text strong {
+  color: var(--color-primary);
+}
+
+.file-upload-helper {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin-top: var(--spacing-sm);
+}
+
+.file-upload-input {
+  display: none;
+}
+
+.file-upload-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.file-upload-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-surface-elevated);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.file-upload-name {
+  flex: 1;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-upload-size {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.file-upload-remove {
+  padding: var(--spacing-xs);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+}
+
+.file-upload-remove:hover {
+  background: var(--color-bg);
+  color: var(--color-error);
+}
