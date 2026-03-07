@@ -1,3 +1,5 @@
+import { Heart, ExternalLink, MoreHorizontal } from 'lucide-react';
+
 const categoryColors = {
   Music: { bg: 'hsl(270 50% 50% / 0.1)', text: 'hsl(270 50% 50%)', border: 'hsl(270 50% 50% / 0.3)' },
   Book: { bg: 'hsl(220 60% 45% / 0.1)', text: 'hsl(220 60% 45%)', border: 'hsl(220 60% 45% / 0.3)' },
@@ -12,15 +14,45 @@ const MediaCard = ({ title, category, image, source = "Unsplash", imageAspect = 
 
   return (
     <div className="group flex flex-col h-full bg-surface/50 border border-white/10 rounded-lg overflow-hidden transition-all duration-180 ease-out hover:bg-surface/80 hover:-translate-y-0.5 cursor-pointer">
-      {/* Image - Dynamic aspect ratio */}
+      {/* Image with gradient overlay and hover icons */}
       <div className={`relative overflow-hidden ${imageAspect}`}>
         {image ? (
-          <img 
-            src={image} 
-            alt={title}
-            className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-[1.02]"
-            loading="lazy"
-          />
+          <>
+            <img 
+              src={image} 
+              alt={title}
+              className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-[1.02]"
+              loading="lazy"
+            />
+            
+            {/* Subtle gradient overlay */}
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
+            
+            {/* Hover interaction icons */}
+            <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-160">
+              <button 
+                className="p-1.5 rounded-md bg-black/40 border border-white/10 hover:bg-black/60 transition-all duration-160"
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Save"
+              >
+                <Heart className="w-4 h-4 text-white/80" strokeWidth={1.5} />
+              </button>
+              <button 
+                className="p-1.5 rounded-md bg-black/40 border border-white/10 hover:bg-black/60 transition-all duration-160"
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Open"
+              >
+                <ExternalLink className="w-4 h-4 text-white/80" strokeWidth={1.5} />
+              </button>
+              <button 
+                className="p-1.5 rounded-md bg-black/40 border border-white/10 hover:bg-black/60 transition-all duration-160"
+                onClick={(e) => e.stopPropagation()}
+                aria-label="More"
+              >
+                <MoreHorizontal className="w-4 h-4 text-white/80" strokeWidth={1.5} />
+              </button>
+            </div>
+          </>
         ) : (
           <div className="absolute inset-0 bg-surface" />
         )}
