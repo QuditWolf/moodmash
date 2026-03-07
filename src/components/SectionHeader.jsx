@@ -1,19 +1,21 @@
+import { Button } from './ui/button';
+
 const SectionHeader = ({ title, count }) => {
   return (
-    <div className="flex items-center justify-between mb-6">
+    <div className="flex items-center justify-between mb-8 col-span-full">
       <div className="flex items-center gap-3">
-        <h2 className="text-2xl font-normal font-display text-foreground">
+        <h2 className="text-20 font-medium text-foreground tracking-tighter">
           {title}
         </h2>
         {count && (
-          <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+          <span className="text-14 text-subtle-foreground font-mono">
             {count}
           </span>
         )}
       </div>
-      <button className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+      <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
         View all
-      </button>
+      </Button>
     </div>
   );
 };

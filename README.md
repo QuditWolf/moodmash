@@ -1,254 +1,478 @@
-# VibeGraph - Minimal Feed UI
+# Premium SaaS Feed Application
 
-A clean, minimal React feed page UI with shadcn-style design system, Tailwind CSS, and masonry layout.
+A modern, dark-themed content discovery feed built with React, Tailwind CSS, and premium design principles inspired by Notion, Linear, and Supabase.
 
-## 🚀 Quick Start
+## Design Philosophy
 
-```bash
-# Install dependencies
-npm install
+This application follows a **premium SaaS aesthetic** with these core principles:
 
-# Run development server
-npm run dev
-```
-
-Open your browser to `http://localhost:5173`
-
-## 📁 Project Structure
-
-```
-src/
-├── App.jsx                    # Main app layout
-├── index.css                  # Tailwind + custom styles
-├── main.jsx                   # Entry point
-└── components/
-    ├── Sidebar.jsx            # Left navigation sidebar
-    ├── FeedPage.jsx           # Main feed container
-    ├── FeedSection.jsx        # Section with masonry grid
-    ├── SectionHeader.jsx      # Section title + count
-    └── MediaCard.jsx          # Placeholder card component
-
-tailwind.config.js             # Tailwind configuration
-postcss.config.js              # PostCSS configuration
-```
-
-## 🎨 Design System
-
-### Colors (shadcn-style)
-- Uses HSL color system with CSS variables
-- Full dark mode support
-- Neutral, minimal palette
-- Semantic color tokens (background, foreground, muted, accent, etc.)
-
-### Typography
-- **Display**: Instrument Serif (headings, logo)
-- **Body**: Inter (UI text)
-- Clean, readable hierarchy
-
-### Layout
-- **Sidebar**: Fixed 256px width
-- **Feed**: Masonry grid (4 → 3 → 2 → 1 columns responsive)
-- **Cards**: Variable heights for Pinterest-like feel
-
-## 🧩 Components
-
-### Sidebar
-- Clean minimal navigation
-- App logo at top
-- Navigation items with icons
-- Hover states
-- Settings at bottom
-
-### FeedPage
-- Sticky header with title
-- Multiple sections (Music, Movies, Art, Fashion, Books)
-- Generates mock data automatically
-
-### FeedSection
-- Section header with title and count
-- "View all" button
-- Masonry grid layout
-
-### MediaCard
-- Placeholder blocks (no real images)
-- Variable heights: small, medium, large, xlarge
-- Skeleton loading effect
-- Shimmer animation
-- Tag badges
-- Hover effects
-- Rounded corners + soft shadows
-
-### SectionHeader
-- Section title
-- Item count badge
-- "View all" link
-
-## 🎯 Features
-
-### Masonry Layout
-- CSS column-based masonry
-- Responsive breakpoints
-- Different card heights for visual interest
-- No JavaScript required
-
-### Placeholder Design
-- Gradient backgrounds instead of images
-- Skeleton text placeholders
-- Shimmer loading animation
-- Clean, minimal aesthetic
-
-### Responsive
-- **Desktop (1280px+)**: 4 columns
-- **Laptop (1024px-1280px)**: 3 columns
-- **Tablet (640px-1024px)**: 2 columns
-- **Mobile (<640px)**: 1 column
-
-### Dark Mode Ready
-- Toggle by adding `dark` class to `<html>` element
-- All colors adapt automatically
-- Smooth transitions
-
-## 🛠️ Tech Stack
-
-- **React 18** - UI library
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **Lucide React** - Icons
-- **Framer Motion** - Animations (already installed)
-
-## 📊 Mock Data
-
-Located in `src/components/FeedPage.jsx`:
-
-```javascript
-const sections = [
-  { title: 'Music', items: 12 },
-  { title: 'Movies', items: 10 },
-  { title: 'Art', items: 14 },
-  { title: 'Fashion', items: 8 },
-  { title: 'Books', items: 9 },
-];
-```
-
-Each item has:
-- Random height (small/medium/large/xlarge)
-- Category-specific tags
-- Placeholder title
-- Metadata indicators
-
-## 🎨 Customization
-
-### Change Masonry Columns
-Edit `src/index.css`:
-```css
-.masonry-grid {
-  column-count: 4; /* Change to 3 or 5 */
-}
-```
-
-### Add New Section
-Edit `src/components/FeedPage.jsx`:
-```javascript
-const sections = [
-  // ... existing sections
-  { title: 'Photography', items: generateMockItems('photography', 10) },
-];
-```
-
-### Modify Card Heights
-Edit `src/components/MediaCard.jsx`:
-```javascript
-const heightClasses = {
-  small: 'h-48',   // 192px
-  medium: 'h-64',  // 256px
-  large: 'h-80',   // 320px
-  xlarge: 'h-96',  // 384px
-};
-```
-
-### Change Color Scheme
-Edit `src/index.css` `:root` variables:
-```css
-:root {
-  --background: 0 0% 100%;
-  --foreground: 0 0% 3.9%;
-  /* ... etc */
-}
-```
-
-## 🌙 Enable Dark Mode
-
-Add to your HTML or use JavaScript:
-```javascript
-document.documentElement.classList.add('dark');
-```
-
-## 🚫 What's NOT Included
-
-- No backend/API
-- No authentication
-- No routing (single page)
-- No real images
-- No user interactions (likes, saves)
-- No data fetching
-
-This is a pure UI foundation ready to be extended.
-
-## 📦 Dependencies
-
-```json
-{
-  "react": "^18.3.1",
-  "react-dom": "^18.3.1",
-  "lucide-react": "^0.344.0",
-  "framer-motion": "^11.0.5"
-}
-```
-
-```json
-{
-  "tailwindcss": "latest",
-  "postcss": "latest",
-  "autoprefixer": "latest"
-}
-```
-
-## 🎯 Design Inspiration
-
-- **Vercel**: Clean, minimal, premium feel
-- **Linear**: Smooth interactions, subtle animations
-- **shadcn/ui**: Component design patterns
-- **Pinterest**: Masonry layout
-
-## 📝 Next Steps
-
-To extend this UI:
-
-1. **Add real images**: Replace gradient placeholders
-2. **Add routing**: React Router for navigation
-3. **Add interactions**: Click handlers, likes, saves
-4. **Add filtering**: Filter by category/tag
-5. **Add search**: Search functionality
-6. **Connect backend**: API integration
-7. **Add infinite scroll**: Load more items
-8. **Add detail views**: Modal or page for each item
-
-## 🤝 Component Reusability
-
-All components are designed to be:
-- Self-contained
-- Easy to extend
-- Prop-driven
-- Styled with Tailwind
-- No external CSS files needed
-
-## 📱 Mobile Optimized
-
-- Touch-friendly tap targets
-- Responsive typography
-- Single column on mobile
-- Optimized spacing
+- **True Black Background**: Pure `#000000` with subtle surface variations
+- **Monospace Typography**: IBM Plex Mono for technical, developer-first feel
+- **Subtle Interactions**: 180-200ms transitions with `cubic-bezier(0.16, 1, 0.3, 1)` easing
+- **High Density**: Compact spacing, maximum information per viewport
+- **Structural Grid**: 12-column responsive grid system with proper alignment
+- **Minimal Styling**: No heavy shadows, no gradients, no glow effects
 
 ---
 
-Built with ❤️ using React + Tailwind CSS
+## Visual Design System
+
+### Color Palette
+
+```css
+/* Background */
+--background: #000000 (pure black)
+--surface: hsl(0 0% 4%)
+--surface-elevated: hsl(0 0% 7%)
+
+/* Text */
+--foreground: hsl(0 0% 98%) (primary text)
+--muted-foreground: hsl(0 0% 55%) (secondary text)
+--subtle-foreground: hsl(0 0% 40%) (tertiary text)
+
+/* Borders */
+--border: hsl(0 0% 10%)
+--border-hover: hsl(0 0% 15%)
+
+/* Category Colors (Muted) */
+Music: hsl(270 50% 50%)
+Book: hsl(220 60% 45%)
+Movie: hsl(0 50% 50%)
+Artwork: hsl(160 50% 45%)
+Podcast: hsl(40 60% 50%)
+Article: hsl(0 0% 40%)
+```
+
+### Typography Scale
+
+```css
+.text-11 { font-size: 11px; line-height: 1.4; }
+.text-12 { font-size: 12px; line-height: 1.4; }
+.text-13 { font-size: 13px; line-height: 1.4; }
+.text-14 { font-size: 14px; line-height: 1.4; }
+.text-16 { font-size: 16px; line-height: 1.4; }
+.text-18 { font-size: 18px; line-height: 1.3; }
+.text-28 { font-size: 28px; line-height: 1.2; }
+```
+
+**Font**: IBM Plex Mono (weights: 300, 400, 500, 600)
+- Letter spacing: `-0.011em` (body), `-0.02em` (headings)
+- Font features: `"liga" 0, "calt" 0` (disable ligatures)
+
+### Spacing Scale
+
+Use consistent spacing values:
+- `4px` / `8px` / `12px` / `16px` / `24px` / `32px`
+- Tailwind: `1` / `2` / `3` / `4` / `6` / `8`
+
+---
+
+## Layout System
+
+### Grid Structure
+
+**12-Column Responsive Grid**
+```jsx
+<div className="grid grid-cols-12 gap-6">
+  {/* Cards use col-span */}
+</div>
+```
+
+**Responsive Column Spans:**
+- Desktop (1280px+): `col-span-3` (4 cards per row)
+- Laptop (1024px): `col-span-4` (3 cards per row)
+- Tablet (768px): `col-span-6` (2 cards per row)
+- Mobile (<768px): `col-span-12` (1 card per row)
+
+**Container:**
+- Max width: `max-w-7xl`
+- Horizontal padding: `px-6`
+- Centered: `mx-auto`
+
+---
+
+## Component Patterns
+
+### Card Component
+
+**Structure:**
+```
+┌─────────────────────┐
+│                     │
+│      Image          │ 4:5 aspect ratio
+│                     │
+├─────────────────────┤
+│ Title    [Category] │ Title + Badge
+│ Source              │ Link
+└─────────────────────┘
+```
+
+**Styling:**
+- Background: `bg-surface/50`
+- Border: `border border-white/10`
+- Rounded: `rounded-lg`
+- Padding: `p-6`
+- Vertical spacing: `space-y-3`
+
+**Hover States:**
+- Card: `hover:bg-surface/80 hover:-translate-y-0.5`
+- Image: `group-hover:scale-[1.02]`
+- Transition: `180ms ease-out`
+
+### Category Badge
+
+**Styling:**
+- Padding: `px-2.5 py-1`
+- Font: `text-11 uppercase tracking-wide`
+- Border: `1px solid` with muted accent color
+- Background: 10% opacity of accent color
+- Rounded: `rounded`
+
+**Colors by Category:**
+```jsx
+Music: purple (270° 50% 50%)
+Book: blue (220° 60% 45%)
+Movie: red (0° 50% 50%)
+Artwork: emerald (160° 50% 45%)
+Podcast: amber (40° 60% 50%)
+Article: gray (0° 0% 40%)
+```
+
+### Header Component
+
+**Structure:**
+- Sticky: `sticky top-0 z-10`
+- Height: `h-16`
+- Border: `border-b border-white/10`
+- Background: `bg-background/95 backdrop-blur-sm`
+
+---
+
+## Interaction Design
+
+### Transitions
+
+**Standard Easing:**
+```css
+cubic-bezier(0.16, 1, 0.3, 1)
+```
+
+**Timing:**
+- Quick interactions: `160ms`
+- Standard: `180ms`
+- Image transforms: `200ms`
+
+### Hover Effects
+
+**Cards:**
+- Subtle lift: `translateY(-2px)` or `-translate-y-0.5`
+- Background shift: 2% lighter
+- No shadows, no glow
+
+**Images:**
+- Scale: `1.02` (very subtle)
+- Smooth transform
+
+**Links:**
+- Color shift: `text-muted-foreground` → `text-foreground`
+- Duration: `160ms`
+
+### Active States
+
+**Press:**
+- Scale: `0.99`
+- Immediate feedback
+
+---
+
+## Content Guidelines
+
+### Feed Items
+
+**Categories:**
+- Music
+- Book
+- Movie
+- Artwork
+- Podcast
+- Article
+
+**Image Requirements:**
+- Aspect ratio: 4:5
+- Quality: High resolution (800px+ width)
+- Format: JPG/PNG
+- Loading: Lazy load with `loading="lazy"`
+
+**Text Content:**
+- Title: 2 lines max (`line-clamp-2`)
+- Source: Single line, no truncation
+- No metadata (views/time removed for cleaner look)
+
+---
+
+## Technical Stack
+
+### Core Technologies
+- **React 18**: Component framework
+- **Vite**: Build tool and dev server
+- **Tailwind CSS 3.4.1**: Utility-first styling
+- **Lucide React**: Icon library
+
+### UI Components
+- Custom card components
+- shadcn/ui base components (Avatar, Button, Separator)
+
+### Styling Approach
+- Tailwind utility classes
+- CSS custom properties for theming
+- No CSS-in-JS
+- No styled-components
+
+---
+
+## Development Guidelines
+
+### Component Structure
+
+**File Organization:**
+```
+src/
+├── components/
+│   ├── MediaCard.jsx       # Feed card component
+│   ├── FeedPage.jsx        # Main feed layout
+│   └── ui/                 # Base UI components
+├── contexts/               # React contexts
+├── pages/                  # Page components
+└── styles/                 # Global styles
+```
+
+### Naming Conventions
+
+**Components:**
+- PascalCase: `MediaCard`, `FeedPage`
+- Descriptive names: `MediaCard` not `Card`
+
+**CSS Classes:**
+- Utility-first: Use Tailwind classes
+- Custom utilities in `@layer utilities`
+- Semantic naming for custom classes
+
+### Code Style
+
+**React:**
+```jsx
+// Functional components with arrow functions
+const MediaCard = ({ title, category, image, source }) => {
+  return (
+    <div className="...">
+      {/* Content */}
+    </div>
+  );
+};
+```
+
+**Tailwind:**
+```jsx
+// Group related utilities
+className="flex items-center gap-2"
+
+// Responsive modifiers
+className="col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-3"
+
+// State modifiers
+className="hover:bg-surface/80 transition-all duration-180"
+```
+
+---
+
+## Building New Features
+
+### Adding New Card Types
+
+1. Define category color in `categoryColors` object
+2. Add to `categories` array in feed generator
+3. Provide image collection and titles
+4. Maintain 4:5 aspect ratio for images
+
+### Creating New Pages
+
+**Follow this structure:**
+```jsx
+const NewPage = () => {
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-10 border-b border-white/10">
+        {/* Header content */}
+      </header>
+
+      {/* Content */}
+      <div className="py-6 px-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Page content */}
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+### Adding Interactions
+
+**Hover states:**
+```jsx
+className="transition-all duration-180 ease-out hover:bg-surface/80"
+```
+
+**Image hover:**
+```jsx
+className="group"  // Parent
+className="group-hover:scale-[1.02]"  // Image
+```
+
+**Link hover:**
+```jsx
+className="hover:text-foreground transition-colors duration-160"
+```
+
+---
+
+## Design Principles for New UI
+
+### Do's ✓
+
+- Use pure black `#000000` background
+- Apply subtle borders `border-white/10`
+- Use monospace typography (IBM Plex Mono)
+- Keep transitions between 160-200ms
+- Use `cubic-bezier(0.16, 1, 0.3, 1)` easing
+- Maintain high information density
+- Apply subtle hover states (2% lighter, 2px lift)
+- Use muted accent colors (50% saturation max)
+- Keep rounded corners subtle (`rounded-lg` max)
+- Align to 12-column grid system
+
+### Don'ts ✗
+
+- No heavy shadows or elevation
+- No gradients (except subtle surface variations)
+- No glow effects
+- No neon colors
+- No bold/heavy font weights (500 max)
+- No large gaps (6 = 24px max)
+- No floating card feeling
+- No dramatic animations
+- No border radius on grid layouts
+- No approximations (use exact spacing scale)
+
+---
+
+## Accessibility
+
+### Color Contrast
+- Text on black: `hsl(0 0% 98%)` meets WCAG AA
+- Muted text: `hsl(0 0% 55%)` for secondary content
+- Borders: `white/10` visible but subtle
+
+### Interactive Elements
+- All clickable elements have hover states
+- Focus states inherit from Tailwind defaults
+- Sufficient touch targets (44px minimum)
+
+### Images
+- All images have `alt` attributes
+- Lazy loading for performance
+- Fallback backgrounds for missing images
+
+---
+
+## Performance Optimization
+
+### Image Loading
+```jsx
+loading="lazy"  // Native lazy loading
+```
+
+### Transitions
+- Use `transform` and `opacity` (GPU accelerated)
+- Avoid animating `width`, `height`, `margin`
+
+### Grid Rendering
+- Fixed column counts reduce layout shifts
+- Gap-based spacing (no margin calculations)
+
+---
+
+## Future Enhancements
+
+### Potential Features
+- Infinite scroll / pagination
+- Filter by category
+- Search functionality
+- User preferences (saved items)
+- Dark/light mode toggle (currently dark only)
+- Keyboard navigation
+- Grid/list view toggle
+
+### Maintaining Design Consistency
+When adding features, always:
+1. Reference this README for design tokens
+2. Use existing component patterns
+3. Match interaction timing (180ms standard)
+4. Test responsive behavior at all breakpoints
+5. Maintain monospace typography
+6. Keep true black background
+7. Use subtle, premium interactions
+
+---
+
+## Quick Reference
+
+### Common Patterns
+
+**Card Grid:**
+```jsx
+<div className="grid grid-cols-12 gap-6">
+  <div className="col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-3">
+    <Card />
+  </div>
+</div>
+```
+
+**Premium Button:**
+```jsx
+<button className="hover:bg-surface/50 transition-all duration-160">
+  Click me
+</button>
+```
+
+**Category Badge:**
+```jsx
+<div className="px-2.5 py-1 rounded text-11 uppercase tracking-wide"
+     style={{ backgroundColor: '...', color: '...', border: '...' }}>
+  Category
+</div>
+```
+
+**Page Container:**
+```jsx
+<div className="py-6 px-6">
+  <div className="max-w-7xl mx-auto">
+    {/* Content */}
+  </div>
+</div>
+```
+
+---
+
+## Support
+
+For questions about design decisions or implementation details, refer to:
+- `DESIGN_SYSTEM.md` - Complete design token reference
+- `PREMIUM_DESIGN_SYSTEM.md` - Premium interaction patterns
+- `STRUCTURAL_SYSTEM.md` - Grid and layout system
+- `COMPONENTS.md` - Component API documentation
+
+---
+
+**Built with precision. Designed for developers.**
