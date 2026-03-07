@@ -1,4 +1,4 @@
-import { Play } from 'lucide-react';
+import { Play, Heart, ExternalLink, MoreHorizontal } from 'lucide-react';
 
 const categoryColors = {
   Music: { bg: 'hsl(270 50% 50% / 0.1)', text: 'hsl(270 50% 50%)', border: 'hsl(270 50% 50% / 0.3)' },
@@ -25,6 +25,9 @@ const VideoCard = ({ title, category, image, source = "YouTube" }) => {
               loading="lazy"
             />
             
+            {/* Subtle gradient overlay */}
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
+            
             {/* Play Indicator */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="bg-black/40 rounded-full p-3 backdrop-blur-sm">
@@ -37,6 +40,31 @@ const VideoCard = ({ title, category, image, source = "YouTube" }) => {
               <div className="text-11 uppercase tracking-wide px-2 py-1 rounded border border-white/10 bg-black/50 backdrop-blur-sm text-white/80 font-medium">
                 Video
               </div>
+            </div>
+
+            {/* Hover interaction icons */}
+            <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-160">
+              <button 
+                className="p-1.5 rounded-md bg-black/40 border border-white/10 hover:bg-black/60 transition-all duration-160"
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Save"
+              >
+                <Heart className="w-4 h-4 text-white/80" strokeWidth={1.5} />
+              </button>
+              <button 
+                className="p-1.5 rounded-md bg-black/40 border border-white/10 hover:bg-black/60 transition-all duration-160"
+                onClick={(e) => e.stopPropagation()}
+                aria-label="Open"
+              >
+                <ExternalLink className="w-4 h-4 text-white/80" strokeWidth={1.5} />
+              </button>
+              <button 
+                className="p-1.5 rounded-md bg-black/40 border border-white/10 hover:bg-black/60 transition-all duration-160"
+                onClick={(e) => e.stopPropagation()}
+                aria-label="More"
+              >
+                <MoreHorizontal className="w-4 h-4 text-white/80" strokeWidth={1.5} />
+              </button>
             </div>
           </>
         ) : (
