@@ -51,7 +51,7 @@ const OnboardingPage = ({ onComplete }) => {
   };
 
   if (showTasteDNA && tasteDNA) {
-    return <TasteDNACard tasteDNA={tasteDNA} onContinue={handleComplete} />;
+    return <TasteDNACard tasteDNA={tasteDNA} answers={answers} onContinue={handleComplete} />;
   }
 
   return (
