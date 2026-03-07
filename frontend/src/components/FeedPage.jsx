@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import FeedItem from './FeedItem';
+import CompactCard from './CompactCard';
+import RevealOnScroll from './RevealOnScroll';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Button } from './ui/button';
-import { Search } from 'lucide-react';
+import { Search, LayoutGrid, Columns, List } from 'lucide-react';
 
 // Curated aesthetic images from Unsplash
 const imageCollections = {
@@ -120,6 +123,7 @@ const generateUnifiedFeed = (count) => {
 
 const FeedPage = () => {
   const feedItems = generateUnifiedFeed(24);
+  const [feedMode, setFeedMode] = useState('visual');
 
   return (
     <div className="min-h-screen bg-background">
@@ -132,6 +136,43 @@ const FeedPage = () => {
             </h1>
             
             <div className="flex items-center gap-4">
+              {/* Feed Mode Switcher */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setFeedMode('grid')}
+                  className={`p-2 rounded-md border transition-all duration-160 ${
+                    feedMode === 'grid'
+                      ? 'bg-surface border-white/20'
+                      : 'border-white/10 hover:bg-surface/50'
+                  }`}
+                  aria-label="Grid mode"
+                >
+                  <LayoutGrid className="w-4 h-4 text-foreground" strokeWidth={1.5} />
+                </button>
+                <button
+                  onClick={() => setFeedMode('visual')}
+                  className={`p-2 rounded-md border transition-all duration-160 ${
+                    feedMode === 'visual'
+                      ? 'bg-surface border-white/20'
+                      : 'border-white/10 hover:bg-surface/50'
+                  }`}
+                  aria-label="Visual mode"
+                >
+                  <Columns className="w-4 h-4 text-foreground" strokeWidth={1.5} />
+                </button>
+                <button
+                  onClick={() => setFeedMode('compact')}
+                  className={`p-2 rounded-md border transition-all duration-160 ${
+                    feedMode === 'compact'
+                      ? 'bg-surface border-white/20'
+                      : 'border-white/10 hover:bg-surface/50'
+                  }`}
+                  aria-label="Compact mode"
+                >
+                  <List className="w-4 h-4 text-foreground" strokeWidth={1.5} />
+                </button>
+              </div>
+
               <Button 
                 variant="ghost" 
                 size="icon"
@@ -147,18 +188,51 @@ const FeedPage = () => {
         </div>
       </header>
 
-      {/* Feed Masonry Layout */}
+      {/* Feed - Dynamic Layout Based on Mode */}
       <div className="py-6 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6">
-            {feedItems.map((item) => (
-              <FeedItem
-                key={item.id}
-                item={item}
-                variant={item.variant}
-              />
-            ))}
-          </div>
+          {/* Visual Mode - Masonry */}
+          {feedMode === 'visual' && (
+            <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6">
+              {feedItems.map((item) => (
+                <RevealOnScroll key={item.id}>
+                  <FeedItem item={item} variant={item.variant} />
+                </RevealOnScroll>
+              ))}
+            </div>
+          )}
+
+          {/* Grid Mode - Structured Grid */}
+          {feedMode === 'grid' && (
+            <div className="grid grid-cols-12 gap-6">
+              {feedItems.map((item) => (
+                <div 
+                  key={item.id}
+                  className="col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-3"
+                >
+                  <RevealOnScroll>
+                    <FeedItem item={item} variant={item.variant} />
+                  </RevealOnScroll>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Compact Mode - List View */}
+          {feedMode === 'compact' && (
+            <div className="flex flex-col gap-4">
+              {feedItems.map((item) => (
+                <RevealOnScroll key={item.id}>
+                  <CompactCard
+                    title={item.title}
+                    category={item.category}
+                    image={item.image}
+                    source={item.source}
+                  />
+                </RevealOnScroll>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
