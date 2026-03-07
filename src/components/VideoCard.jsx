@@ -1,3 +1,5 @@
+import { Play } from 'lucide-react';
+
 const categoryColors = {
   Music: { bg: 'hsl(270 50% 50% / 0.1)', text: 'hsl(270 50% 50%)', border: 'hsl(270 50% 50% / 0.3)' },
   Book: { bg: 'hsl(220 60% 45% / 0.1)', text: 'hsl(220 60% 45%)', border: 'hsl(220 60% 45% / 0.3)' },
@@ -7,20 +9,36 @@ const categoryColors = {
   Article: { bg: 'hsl(0 0% 40% / 0.1)', text: 'hsl(0 0% 40%)', border: 'hsl(0 0% 40% / 0.3)' },
 };
 
-const MediaCard = ({ title, category, image, source = "Unsplash", imageAspect = "aspect-[4/5]", isFeatured = false }) => {
+const VideoCard = ({ title, category, image, source = "YouTube" }) => {
   const colors = categoryColors[category] || categoryColors.Article;
 
   return (
     <div className="group flex flex-col h-full bg-surface/50 border border-white/10 rounded-lg overflow-hidden transition-all duration-180 ease-out hover:bg-surface/80 hover:-translate-y-0.5 cursor-pointer">
-      {/* Image - Dynamic aspect ratio */}
-      <div className={`relative overflow-hidden ${imageAspect}`}>
+      {/* Video Thumbnail - 9:16 vertical ratio */}
+      <div className="relative overflow-hidden aspect-[9/16]">
         {image ? (
-          <img 
-            src={image} 
-            alt={title}
-            className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-[1.02]"
-            loading="lazy"
-          />
+          <>
+            <img 
+              src={image} 
+              alt={title}
+              className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-[1.02]"
+              loading="lazy"
+            />
+            
+            {/* Play Indicator */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="bg-black/40 rounded-full p-3 backdrop-blur-sm">
+                <Play className="w-6 h-6 text-white/80 fill-white/80" strokeWidth={0} />
+              </div>
+            </div>
+
+            {/* Video Badge */}
+            <div className="absolute top-3 left-3">
+              <div className="text-11 uppercase tracking-wide px-2 py-1 rounded border border-white/10 bg-black/50 backdrop-blur-sm text-white/80 font-medium">
+                Video
+              </div>
+            </div>
+          </>
         ) : (
           <div className="absolute inset-0 bg-surface" />
         )}
@@ -60,4 +78,4 @@ const MediaCard = ({ title, category, image, source = "Unsplash", imageAspect = 
   );
 };
 
-export default MediaCard;
+export default VideoCard;

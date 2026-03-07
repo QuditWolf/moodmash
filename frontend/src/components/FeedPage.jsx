@@ -1,4 +1,4 @@
-import MediaCard from './MediaCard';
+import FeedItem from './FeedItem';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Button } from './ui/button';
 import { Search } from 'lucide-react';
@@ -41,6 +41,12 @@ const imageCollections = {
     'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&q=80',
     'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800&q=80',
   ],
+  videos: [
+    'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&q=80',
+    'https://images.unsplash.com/photo-1574169208507-84376144848b?w=800&q=80',
+    'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&q=80',
+    'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=800&q=80',
+  ],
 };
 
 const titles = {
@@ -50,6 +56,13 @@ const titles = {
   books: ['Literary Fiction', 'Poetry Collection', 'Philosophy Reads', 'Classic Novels'],
   podcasts: ['Tech Talks', 'Design Thinking', 'Startup Stories', 'Creative Process'],
   articles: ['Product Strategy', 'Design Systems', 'Engineering Culture', 'Growth Tactics'],
+  videos: ['Studio Session – Lo-fi Beats', 'Behind the Scenes', 'Creative Process', 'Day in the Life'],
+};
+
+// Get random layout variant
+const getRandomVariant = () => {
+  const variants = ['normal', 'normal', 'normal', 'normal', 'featured', 'tall', 'wide'];
+  return variants[Math.floor(Math.random() * variants.length)];
 };
 
 // Generate unified mixed feed
@@ -65,8 +78,29 @@ const generateUnifiedFeed = (count) => {
   };
   
   const sources = ['Unsplash', 'Spotify', 'IMDb', 'Artsy', 'Apple', 'Medium'];
+  const videoSources = ['YouTube', 'TikTok', 'Instagram', 'Vimeo'];
 
   return Array.from({ length: count }, (_, i) => {
+    const variant = getRandomVariant();
+    
+    // Tall cards are video content
+    if (variant === 'tall') {
+      const videoImages = imageCollections.videos || [];
+      const videoTitles = titles.videos || [];
+      const category = categories[i % categories.length];
+      
+      return {
+        id: `item-${i}`,
+        category,
+        title: videoTitles[i % videoTitles.length],
+        image: videoImages[i % videoImages.length],
+        source: videoSources[Math.floor(Math.random() * videoSources.length)],
+        variant,
+        type: 'video'
+      };
+    }
+    
+    // Regular content
     const category = categories[i % categories.length];
     const categoryKey = categoryMap[category];
     const images = imageCollections[categoryKey] || [];
@@ -78,6 +112,8 @@ const generateUnifiedFeed = (count) => {
       title: itemTitles[i % itemTitles.length],
       image: images[i % images.length],
       source: sources[Math.floor(Math.random() * sources.length)],
+      variant,
+      type: 'media'
     };
   });
 };
@@ -111,22 +147,16 @@ const FeedPage = () => {
         </div>
       </header>
 
-      {/* Feed Grid - Premium SaaS Layout */}
+      {/* Feed Masonry Layout */}
       <div className="py-6 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-12 gap-6">
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6">
             {feedItems.map((item) => (
-              <div 
+              <FeedItem
                 key={item.id}
-                className="col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-3"
-              >
-                <MediaCard
-                  image={item.image}
-                  title={item.title}
-                  category={item.category}
-                  source={item.source}
-                />
-              </div>
+                item={item}
+                variant={item.variant}
+              />
             ))}
           </div>
         </div>
