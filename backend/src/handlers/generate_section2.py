@@ -1,216 +1,159 @@
 """
 Generate Section 2 Handler
 
-This module handles generation of adaptive Section 2 questions based on Section 1 answers.
+Generates adaptive quiz questions based on Section 1 answers.
 """
 
 import json
 import logging
-import time
-from typing import Dict, Any, List
+from datetime import datetime
+from typing import Dict, List, Any
 
-from ..services.bedrock_client import get_claude_service
-from ..services.dynamodb_client import get_dynamodb_client
+from ..services.bedrock_client import ClaudeService
+from ..services.dynamodb_client import DynamoDBClient
+from ..utils.validation import validate_session_id, validate_section1_answers
+from .generate_section1 import load_prompt
 
 logger = logging.getLogger(__name__)
 
 
-def generate_section2(session_id: str, section1_answers: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_section2(
+    session_id: str,
+    section1_answers: List[Dict[str, Any]]
+) -> Dict[str, Any]:
     """
-    Generate adaptive Section 2 questions based on Section 1 answers.
+    Generate Section 2 adaptive questions.
     
     Args:
         session_id: Session identifier
-        section1_answers: List of answers from Section 1
+        section1_answers: List of Section 1 answers
         
     Returns:
-        Dictionary with Section 2 questions
+        Dictionary with questions
         
     Raises:
-        Exception: If session not found, expired, or generation fails
+        ValueError: If session not found or answers invalid
+        Exception: If generation fails
     """
     try:
-        logger.info(f"Generating Section 2 for session: {session_id}")
+        # Validate inputs
+        validate_session_id(session_id)
+        validate_section1_answers(section1_answers)
         
-        # Retrieve session from DynamoDB
-        dynamodb = get_dynamodb_client()
-        session = dynamodb.get_item('Sessions', {'sessionId': session_id})
+        # Initialize services
+        claude = ClaudeService()
+        db = DynamoDBClient()
         
+        logger.info(f"Generating Section 2 for session {session_id}")
+        
+        # Retrieve session
+        session = db.get_session(session_id)
         if not session:
-            raise Exception("Session not found")
-        
-        # Check if session expired
-        current_time = int(time.time())
-        expires_at = session.get('expiresAt', 0)
-        if current_time > expires_at:
-            raise Exception("Session expired")
-        
-        # Get Section 1 questions for context
-        section1_questions = session.get('section1Questions', [])
+            raise ValueError(f"Session not found: {session_id}")
         
         # Build context from Section 1 answers
-        context = _build_answer_context(section1_questions, section1_answers)
+        context_parts = []
+        for answer in section1_answers:
+            question_id = answer.get("questionId")
+            selected = answer.get("selectedOptions", [])
+            category = answer.get("category", "unknown")
+            
+            if selected:
+                context_parts.append(
+                    f"- {category}: {', '.join(selected)}"
+                )
         
-        # Get prompt for Section 2 with context
-        prompt = _get_section2_prompt(context)
+        section1_context = "\n".join(context_parts)
+        
+        # Load prompt and inject context
+        prompt_template = load_prompt("section2_prompt.txt")
+        prompt = prompt_template.replace("{section1_context}", section1_context)
         
         # Call Claude to generate adaptive questions
-        claude = get_claude_service()
-        response = claude.invoke(
-            prompt=prompt,
-            temperature=0.7,
-            max_tokens=2000
+        response_text = claude.generate_questions(
+            prompt,
+            num_questions=5,
+            context=section1_context
         )
         
-        # Parse questions from response
-        questions = _parse_questions(response)
+        # Parse JSON response
+        try:
+            response_data = json.loads(response_text)
+            questions = response_data.get("questions", [])
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse Claude response: {e}")
+            logger.error(f"Response text: {response_text}")
+            raise ValueError("Failed to parse question generation response")
         
-        # Validate we got 5 questions
+        # Validate questions
         if len(questions) != 5:
-            raise Exception(f"Expected 5 questions, got {len(questions)}")
+            logger.warning(f"Expected 5 questions, got {len(questions)}")
         
         # Update session with Section 1 answers and Section 2 questions
-        dynamodb.update_item(
-            'Sessions',
-            {'sessionId': session_id},
-            {
-                'section1Answers': section1_answers,
-                'section2Questions': questions,
-                'status': 'section2_complete'
+        db.update(
+            table_name=db.sessions_table,
+            key={"sessionId": session_id},
+            update_expression=(
+                "SET #status = :status, "
+                "section1Answers = :s1answers, "
+                "section2Questions = :s2questions, "
+                "updatedAt = :timestamp"
+            ),
+            expression_names={
+                "#status": "status"
+            },
+            expression_values={
+                ":status": "section2_complete",
+                ":s1answers": section1_answers,
+                ":s2questions": questions,
+                ":timestamp": datetime.utcnow().isoformat()
             }
         )
         
-        logger.info(f"Section 2 generated successfully for session: {session_id}")
+        logger.info(f"Section 2 generated successfully: {len(questions)} questions")
         
-        return {'questions': questions}
+        return {
+            "questions": questions
+        }
         
     except Exception as e:
-        logger.error(f"Failed to generate Section 2: {str(e)}", exc_info=True)
+        logger.error(f"Error generating Section 2: {e}", exc_info=True)
         raise
 
 
-def _build_answer_context(
-    questions: List[Dict[str, Any]],
-    answers: List[Dict[str, Any]]
-) -> str:
-    """
-    Build context string from Section 1 questions and answers.
+if __name__ == "__main__":
+    # For testing
+    logging.basicConfig(level=logging.INFO)
     
-    Args:
-        questions: Section 1 questions
-        answers: Section 1 answers
-        
-    Returns:
-        Context string for Claude
-    """
-    context_parts = []
+    # Example usage
+    test_answers = [
+        {
+            "questionId": "q1",
+            "selectedOptions": ["Visual art", "Photography"],
+            "category": "content_preference"
+        },
+        {
+            "questionId": "q2",
+            "selectedOptions": ["By exploring"],
+            "category": "discovery_style"
+        },
+        {
+            "questionId": "q3",
+            "selectedOptions": ["Calm", "Reflective"],
+            "category": "mood_preference"
+        },
+        {
+            "questionId": "q4",
+            "selectedOptions": ["Observe"],
+            "category": "engagement_style"
+        },
+        {
+            "questionId": "q5",
+            "selectedOptions": ["Aesthetic appeal"],
+            "category": "attraction_factors"
+        }
+    ]
     
-    # Create answer lookup by question ID
-    answer_map = {a['questionId']: a['selectedOptions'] for a in answers}
-    
-    for q in questions:
-        q_id = q['id']
-        q_title = q['title']
-        selected = answer_map.get(q_id, [])
-        
-        if selected:
-            context_parts.append(f"Q: {q_title}")
-            context_parts.append(f"A: {', '.join(selected)}")
-            context_parts.append("")
-    
-    return "\n".join(context_parts)
-
-
-def _get_section2_prompt(context: str) -> str:
-    """
-    Get prompt for Section 2 question generation with context.
-    
-    Args:
-        context: Context from Section 1 answers
-        
-    Returns:
-        Prompt text for Claude
-    """
-    return f"""You are a taste profiling expert creating adaptive quiz questions based on someone's initial responses.
-
-Here are their Section 1 answers:
-
-{context}
-
-Based on these answers, generate 5 personalized Section 2 questions that:
-- Dive deeper into the preferences they've shown
-- Explore nuances and specific aspects of their taste
-- Help distinguish their unique profile from others
-- Build on patterns you notice in their Section 1 responses
-- Remain engaging and thought-provoking
-
-Return ONLY a JSON object in this exact format:
-{{
-  "questions": [
-    {{
-      "id": "q6",
-      "title": "Question text here?",
-      "category": "content|experience|aesthetic|values|social",
-      "options": ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5"],
-      "multiSelect": true|false
-    }}
-  ]
-}}
-
-Make the questions feel personalized to their Section 1 responses."""
-
-
-def _parse_questions(claude_response: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """
-    Parse questions from Claude response.
-    
-    Args:
-        claude_response: Response from Claude API
-        
-    Returns:
-        List of question dictionaries
-        
-    Raises:
-        Exception: If parsing fails
-    """
-    try:
-        # Extract content from response
-        content = claude_response.get('content', [])
-        if not content:
-            raise Exception("No content in Claude response")
-        
-        # Get text from first content block
-        text = content[0].get('text', '')
-        if not text:
-            raise Exception("No text in Claude response content")
-        
-        # Find JSON in response
-        json_start = text.find('{')
-        json_end = text.rfind('}') + 1
-        
-        if json_start == -1 or json_end == 0:
-            raise Exception("No JSON found in Claude response")
-        
-        json_text = text[json_start:json_end]
-        
-        # Parse JSON
-        data = json.loads(json_text)
-        
-        # Extract questions
-        questions = data.get('questions', [])
-        if not questions:
-            raise Exception("No questions in parsed JSON")
-        
-        # Validate question structure
-        for i, q in enumerate(questions):
-            if not all(k in q for k in ['id', 'title', 'category', 'options', 'multiSelect']):
-                raise Exception(f"Question {i} missing required fields")
-        
-        return questions
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse JSON from Claude: {str(e)}")
-        raise Exception("Failed to parse questions from AI response")
-    except Exception as e:
-        logger.error(f"Failed to parse questions: {str(e)}")
-        raise
+    # Note: Need valid session_id from generate_section1
+    # result = generate_section2("test-session-id", test_answers)
+    # print(json.dumps(result, indent=2))

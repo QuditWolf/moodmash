@@ -1,39 +1,39 @@
 """
 Embedding Cache Service
 
-This module provides caching for embedding vectors to minimize Titan API calls.
-Uses DynamoDB as the cache backend with SHA-256 hashing for cache keys.
+Provides caching for embedding generation to avoid redundant API calls.
+Uses SHA-256 hashing for cache keys.
 """
 
 import hashlib
-import logging
 import time
-from typing import List, Optional
-from .dynamodb_client import get_dynamodb_client
+import logging
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+
+from .dynamodb_client import DynamoDBClient
 
 logger = logging.getLogger(__name__)
 
 
 class CacheService:
     """
-    Embedding cache service using DynamoDB.
+    Cache service for embedding vectors.
     
-    Caches embedding vectors keyed by SHA-256 hash of the embedding document.
-    Tracks hit count and last accessed timestamp for cache analytics.
+    Caches embeddings by document hash to avoid redundant Titan API calls.
+    Tracks hit count and last accessed timestamp for analytics.
     """
     
-    def __init__(self, table_name: str = "EmbeddingCache"):
+    def __init__(self, dynamodb_client: Optional[DynamoDBClient] = None):
         """
         Initialize cache service.
         
         Args:
-            table_name: Name of DynamoDB table for cache
+            dynamodb_client: DynamoDBClient instance (creates new if None)
         """
-        self.table_name = table_name
-        self.dynamodb = get_dynamodb_client()
-        logger.info(f"Cache service initialized (table: {table_name})")
+        self.db = dynamodb_client or DynamoDBClient()
     
-    def _compute_hash(self, document: str) -> str:
+    def compute_hash(self, document: str) -> str:
         """
         Compute SHA-256 hash of document.
         
@@ -41,127 +41,201 @@ class CacheService:
             document: Text document to hash
             
         Returns:
-            Hex string of SHA-256 hash
+            Hexadecimal hash string (64 characters)
         """
-        return hashlib.sha256(document.encode('utf-8')).hexdigest()
+        doc_bytes = document.encode('utf-8')
+        hash_obj = hashlib.sha256(doc_bytes)
+        return hash_obj.hexdigest()
     
-    def get(self, document: str) -> Optional[List[float]]:
+    def get(self, doc_hash: str) -> Optional[List[float]]:
         """
-        Get cached embedding vector for document.
+        Get cached embedding by document hash.
         
         Args:
-            document: Embedding document text
+            doc_hash: SHA-256 hash of document
             
         Returns:
-            Cached vector if found, None otherwise
+            Cached embedding vector if found, None otherwise
         """
         try:
-            doc_hash = self._compute_hash(document)
+            cache_entry = self.db.get_cache(doc_hash)
             
-            # Try to get from cache
-            item = self.dynamodb.get_item(
-                self.table_name,
-                {'docHash': doc_hash}
-            )
+            if cache_entry:
+                # Update hit count and last accessed
+                self._update_cache_stats(doc_hash, cache_entry)
+                
+                embedding = cache_entry.get("embedding")
+                logger.info(f"Cache HIT for hash {doc_hash[:16]}...")
+                return embedding
             
-            if item:
-                # Cache hit - update hit count and last accessed
-                vector = item.get('vector')
-                hit_count = item.get('hitCount', 0)
-                
-                logger.info(f"Cache HIT for hash {doc_hash[:8]}... (hits: {hit_count + 1})")
-                
-                # Update hit count and last accessed timestamp
-                self.dynamodb.update_item(
-                    self.table_name,
-                    {'docHash': doc_hash},
-                    {
-                        'hitCount': hit_count + 1,
-                        'lastAccessedAt': int(time.time())
-                    }
-                )
-                
-                return vector
-            else:
-                # Cache miss
-                logger.info(f"Cache MISS for hash {doc_hash[:8]}...")
-                return None
-                
+            logger.info(f"Cache MISS for hash {doc_hash[:16]}...")
+            return None
+            
         except Exception as e:
-            logger.error(f"Cache get error: {str(e)}")
-            # Return None on cache errors (don't fail the request)
+            logger.error(f"Error getting cache entry: {e}")
             return None
     
-    def put(self, document: str, vector: List[float]) -> bool:
+    def put(
+        self,
+        doc_hash: str,
+        embedding: List[float],
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
         """
-        Store embedding vector in cache.
+        Put embedding into cache.
         
         Args:
-            document: Embedding document text
-            vector: Embedding vector to cache
+            doc_hash: SHA-256 hash of document
+            embedding: Embedding vector to cache
+            metadata: Optional metadata to store with cache entry
             
         Returns:
-            True if successful
+            True if successful, False otherwise
         """
         try:
-            doc_hash = self._compute_hash(document)
-            timestamp = int(time.time())
-            
-            # Store in cache
-            item = {
-                'docHash': doc_hash,
-                'vector': vector,
-                'createdAt': timestamp,
-                'hitCount': 0,
-                'lastAccessedAt': timestamp
+            cache_entry = {
+                "docHash": doc_hash,
+                "embedding": embedding,
+                "hitCount": 0,
+                "createdAt": datetime.utcnow().isoformat(),
+                "lastAccessedAt": datetime.utcnow().isoformat()
             }
             
-            self.dynamodb.put_item(self.table_name, item)
+            if metadata:
+                cache_entry["metadata"] = metadata
             
-            logger.info(f"Cached embedding for hash {doc_hash[:8]}...")
+            self.db.put_cache(cache_entry)
+            logger.info(f"Cached embedding for hash {doc_hash[:16]}...")
             return True
             
         except Exception as e:
-            logger.error(f"Cache put error: {str(e)}")
-            # Don't fail the request on cache errors
+            logger.error(f"Error putting cache entry: {e}")
             return False
     
-    def get_stats(self) -> dict:
+    def _update_cache_stats(
+        self,
+        doc_hash: str,
+        cache_entry: Dict[str, Any]
+    ) -> None:
         """
-        Get cache statistics.
+        Update cache statistics (hit count and last accessed).
         
-        Returns:
-            Dictionary with cache stats (total entries, total hits, etc.)
+        Args:
+            doc_hash: Document hash
+            cache_entry: Current cache entry
         """
         try:
-            # Scan cache table for stats
-            items = self.dynamodb.scan(self.table_name)
+            current_hits = cache_entry.get("hitCount", 0)
             
-            total_entries = len(items)
-            total_hits = sum(item.get('hitCount', 0) for item in items)
+            self.db.update(
+                table_name=self.db.cache_table,
+                key={"docHash": doc_hash},
+                update_expression="SET hitCount = :hits, lastAccessedAt = :timestamp",
+                expression_values={
+                    ":hits": current_hits + 1,
+                    ":timestamp": datetime.utcnow().isoformat()
+                }
+            )
             
-            return {
-                'totalEntries': total_entries,
-                'totalHits': total_hits,
-                'averageHits': total_hits / total_entries if total_entries > 0 else 0
-            }
+            logger.debug(f"Updated cache stats for {doc_hash[:16]}... (hits: {current_hits + 1})")
+            
         except Exception as e:
-            logger.error(f"Failed to get cache stats: {str(e)}")
-            return {
-                'totalEntries': 0,
-                'totalHits': 0,
-                'averageHits': 0,
-                'error': str(e)
-            }
-
-
-# Singleton instance
-_cache_service = None
-
-
-def get_cache_service() -> CacheService:
-    """Get singleton cache service instance."""
-    global _cache_service
-    if _cache_service is None:
-        _cache_service = CacheService()
-    return _cache_service
+            # Don't fail the cache get if stats update fails
+            logger.warning(f"Failed to update cache stats: {e}")
+    
+    def get_or_generate(
+        self,
+        document: str,
+        generator_func,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> tuple[List[float], bool]:
+        """
+        Get embedding from cache or generate if not found.
+        
+        This is a convenience method that handles the cache-or-generate pattern.
+        
+        Args:
+            document: Text document to embed
+            generator_func: Function to call if cache miss (should return embedding)
+            metadata: Optional metadata to store with new cache entry
+            
+        Returns:
+            Tuple of (embedding, was_cached)
+            - embedding: The embedding vector
+            - was_cached: True if from cache, False if newly generated
+            
+        Example:
+            >>> cache = CacheService()
+            >>> def generate():
+            ...     return titan_service.embed_text("document")
+            >>> embedding, cached = cache.get_or_generate("document", generate)
+        """
+        # Compute hash
+        doc_hash = self.compute_hash(document)
+        
+        # Try cache first
+        cached_embedding = self.get(doc_hash)
+        if cached_embedding is not None:
+            return cached_embedding, True
+        
+        # Cache miss - generate new embedding
+        logger.info(f"Generating new embedding for hash {doc_hash[:16]}...")
+        start_time = time.time()
+        
+        new_embedding = generator_func()
+        
+        elapsed = time.time() - start_time
+        logger.info(f"Embedding generated in {elapsed:.2f}s")
+        
+        # Cache the new embedding
+        self.put(doc_hash, new_embedding, metadata)
+        
+        return new_embedding, False
+    
+    def get_stats(self, doc_hash: str) -> Optional[Dict[str, Any]]:
+        """
+        Get cache statistics for a document hash.
+        
+        Args:
+            doc_hash: Document hash
+            
+        Returns:
+            Dictionary with hitCount, createdAt, lastAccessedAt if found
+        """
+        try:
+            cache_entry = self.db.get_cache(doc_hash)
+            
+            if cache_entry:
+                return {
+                    "hitCount": cache_entry.get("hitCount", 0),
+                    "createdAt": cache_entry.get("createdAt"),
+                    "lastAccessedAt": cache_entry.get("lastAccessedAt")
+                }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting cache stats: {e}")
+            return None
+    
+    def clear_cache(self, doc_hash: str) -> bool:
+        """
+        Clear specific cache entry.
+        
+        Args:
+            doc_hash: Document hash to clear
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            self.db.delete(
+                table_name=self.db.cache_table,
+                key={"docHash": doc_hash}
+            )
+            logger.info(f"Cleared cache for hash {doc_hash[:16]}...")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error clearing cache: {e}")
+            return False

@@ -175,6 +175,11 @@ test: ## Run all tests (backend unit + frontend unit + integration)
 
 test-backend: ## Run backend unit tests with coverage
 	@echo "$(BLUE)Running backend unit tests...$(NC)"
+	docker-compose run --rm backend-tests
+	@echo "$(GREEN)Backend tests complete!$(NC)"
+
+test-backend-live: ## Run backend tests in live backend container
+	@echo "$(BLUE)Running backend unit tests in live container...$(NC)"
 	docker-compose exec -T backend-api pytest tests/unit/ -v --cov=src --cov=api --cov-report=term-missing
 	@echo "$(GREEN)Backend tests complete!$(NC)"
 
@@ -187,7 +192,7 @@ test-integration: ## Run integration tests (end-to-end flows)
 	@echo "$(BLUE)Running integration tests...$(NC)"
 	@echo "$(YELLOW)Ensuring services are healthy...$(NC)"
 	@$(MAKE) wait-healthy
-	pytest tests/integration/ -v
+	bash scripts/test-integration.sh
 	@echo "$(GREEN)Integration tests complete!$(NC)"
 
 test-watch-backend: ## Run backend tests in watch mode

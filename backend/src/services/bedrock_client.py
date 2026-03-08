@@ -1,260 +1,436 @@
 """
-AWS Bedrock Client Service
+AWS Bedrock Client
 
-This module provides clients for AWS Bedrock models (Claude and Titan).
-Includes retry logic and error handling.
+Provides access to Claude (text generation) and Titan (embeddings) models.
 """
 
-import os
+import boto3
 import json
+import os
 import time
 import logging
-from typing import Dict, Any, List, Optional
-import boto3
-from botocore.exceptions import ClientError
+from typing import Dict, List, Any, Optional
+from botocore.exceptions import ClientError, BotoCoreError
 
 logger = logging.getLogger(__name__)
 
 
 class BedrockClient:
-    """Base Bedrock client with retry logic."""
+    """
+    AWS Bedrock client for Claude and Titan models.
     
-    def __init__(self):
-        """Initialize Bedrock runtime client."""
-        endpoint_url = os.getenv('BEDROCK_ENDPOINT_URL')
-        
-        if endpoint_url:
-            # Local development with LocalStack
-            self.client = boto3.client(
-                'bedrock-runtime',
-                endpoint_url=endpoint_url,
-                region_name=os.getenv('AWS_REGION', 'us-east-1'),
-                aws_access_key_id='dummy',
-                aws_secret_access_key='dummy'
-            )
-        else:
-            # Production with real AWS
-            self.client = boto3.client(
-                'bedrock-runtime',
-                region_name=os.getenv('AWS_REGION', 'us-east-1')
-            )
-        
-        logger.info(f"Bedrock client initialized (endpoint: {endpoint_url or 'AWS'})")
+    Supports both AWS Bedrock and LocalStack for development.
+    """
     
-    def _retry_with_backoff(
+    def __init__(
         self,
-        operation,
+        endpoint_url: Optional[str] = None,
+        region_name: Optional[str] = None,
         max_retries: int = 3,
-        initial_delay: float = 0.5
+        retry_delay: float = 0.5
     ):
+        """
+        Initialize Bedrock client.
+        
+        Args:
+            endpoint_url: Bedrock endpoint (None for AWS, http://localhost:4566 for LocalStack)
+            region_name: AWS region (defaults to AWS_REGION env var or us-east-1)
+            max_retries: Maximum number of retry attempts
+            retry_delay: Initial retry delay in seconds
+        """
+        self.endpoint_url = endpoint_url or os.getenv("BEDROCK_ENDPOINT")
+        self.region_name = region_name or os.getenv("AWS_REGION", "us-east-1")
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+        
+        # Initialize boto3 client
+        client_kwargs = {
+            "service_name": "bedrock-runtime",
+            "region_name": self.region_name
+        }
+        
+        if self.endpoint_url:
+            client_kwargs["endpoint_url"] = self.endpoint_url
+            logger.info(f"Using Bedrock endpoint: {self.endpoint_url}")
+        
+        self.client = boto3.client(**client_kwargs)
+        
+        # Model IDs from environment
+        self.claude_model = os.getenv(
+            "CLAUDE_MODEL",
+            "anthropic.claude-3-5-sonnet-20241022-v2:0"
+        )
+        self.titan_model = os.getenv(
+            "TITAN_MODEL",
+            "amazon.titan-embed-text-v2:0"
+        )
+        
+        logger.info(
+            f"Bedrock client initialized: "
+            f"claude={self.claude_model}, "
+            f"titan={self.titan_model}"
+        )
+    
+    def _retry_with_backoff(self, operation, *args, **kwargs):
         """
         Execute operation with exponential backoff retry logic.
         
         Args:
-            operation: Callable to execute
-            max_retries: Maximum number of retry attempts
-            initial_delay: Initial delay in seconds
+            operation: Function to execute
+            *args: Positional arguments
+            **kwargs: Keyword arguments
             
         Returns:
-            Result of operation
+            Operation result
             
         Raises:
-            Exception: If all retries fail
+            ClientError: If all retries fail
         """
-        delay = initial_delay
+        last_error = None
+        delay = self.retry_delay
         
-        for attempt in range(max_retries):
+        for attempt in range(self.max_retries):
             try:
-                return operation()
+                return operation(*args, **kwargs)
             except ClientError as e:
-                error_code = e.response['Error']['Code']
+                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                last_error = e
                 
                 # Retry on throttling or service errors
-                if error_code in ['ThrottlingException', 
-                                 'ServiceUnavailableException',
-                                 'ModelTimeoutException']:
-                    if attempt < max_retries - 1:
+                if error_code in ["ThrottlingException", "ServiceUnavailable", "ModelTimeoutException"]:
+                    if attempt < self.max_retries - 1:
                         logger.warning(
                             f"Bedrock {error_code}, retrying in {delay}s "
-                            f"(attempt {attempt + 1}/{max_retries})"
+                            f"(attempt {attempt + 1}/{self.max_retries})"
                         )
                         time.sleep(delay)
                         delay *= 2  # Exponential backoff
                         continue
                 
                 # Don't retry on other errors
-                logger.error(f"Bedrock error: {error_code} - {str(e)}")
                 raise
-            except Exception as e:
-                logger.error(f"Unexpected Bedrock error: {str(e)}")
+            except BotoCoreError as e:
+                last_error = e
+                if attempt < self.max_retries - 1:
+                    logger.warning(
+                        f"BotoCore error, retrying in {delay}s: {e}"
+                    )
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
                 raise
         
-        raise Exception(f"Bedrock operation failed after {max_retries} attempts")
-
-
-class ClaudeService(BedrockClient):
-    """
-    Service for Claude 3.5 Sonnet model.
+        raise last_error
     
-    Handles text generation for quiz questions, DNA profiles, growth paths,
-    and analytics.
-    """
-    
-    def __init__(self):
-        """Initialize Claude service."""
-        super().__init__()
-        self.model_id = "anthropic.claude-3-5-sonnet-20241022-v2:0"
-    
-    def invoke(
+    def invoke_claude(
         self,
         prompt: str,
-        temperature: float = 0.7,
-        max_tokens: int = 2000,
+        max_tokens: int = 4096,
+        temperature: float = 1.0,
         system_prompt: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> str:
         """
-        Invoke Claude model with prompt.
+        Invoke Claude or Nova model for text generation.
         
         Args:
-            prompt: User prompt text
-            temperature: Sampling temperature (0-1)
+            prompt: User prompt
             max_tokens: Maximum tokens to generate
-            system_prompt: Optional system prompt
+            temperature: Sampling temperature (0.0-1.0)
+            system_prompt: System prompt (optional)
             
         Returns:
-            Dictionary with response content
+            Generated text
             
         Raises:
-            Exception: If invocation fails after retries
-        """
-        def operation():
-            # Build request body
-            messages = [{"role": "user", "content": prompt}]
+            ClientError: If invocation fails after retries
             
+        Example:
+            >>> client = BedrockClient()
+            >>> response = client.invoke_claude("Generate 5 quiz questions about art")
+            >>> print(response)
+        """
+        # Check if using Nova model
+        is_nova = "nova" in self.claude_model.lower()
+        
+        if is_nova:
+            # Nova API format
+            body = {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [{"text": prompt}]
+                    }
+                ],
+                "inferenceConfig": {
+                    "max_new_tokens": max_tokens,
+                    "temperature": temperature
+                }
+            }
+            
+            if system_prompt:
+                body["system"] = [{"text": system_prompt}]
+        else:
+            # Claude API format
             body = {
                 "anthropic_version": "bedrock-2023-05-31",
-                "messages": messages,
+                "max_tokens": max_tokens,
                 "temperature": temperature,
-                "max_tokens": max_tokens
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
             }
             
             if system_prompt:
                 body["system"] = system_prompt
-            
-            # Invoke model
+        
+        def _invoke():
             response = self.client.invoke_model(
-                modelId=self.model_id,
-                body=json.dumps(body)
+                modelId=self.claude_model,
+                body=json.dumps(body),
+                contentType="application/json",
+                accept="application/json"
             )
             
-            # Parse response
-            response_body = json.loads(response['body'].read())
+            response_body = json.loads(response["body"].read())
             
-            return response_body
+            if is_nova:
+                # Nova response format
+                output = response_body.get("output", {})
+                message = output.get("message", {})
+                content = message.get("content", [])
+                if content and len(content) > 0:
+                    return content[0].get("text", "")
+            else:
+                # Claude response format
+                content = response_body.get("content", [])
+                if content and len(content) > 0:
+                    return content[0].get("text", "")
+            
+            return ""
         
-        try:
-            logger.info(f"Invoking Claude (temp={temperature}, max_tokens={max_tokens})")
-            result = self._retry_with_backoff(operation, max_retries=3)
-            logger.info("Claude invocation successful")
-            return result
-        except Exception as e:
-            logger.error(f"Claude invocation failed: {str(e)}")
-            raise Exception("AI service temporarily unavailable")
-
-
-class TitanEmbeddingService(BedrockClient):
-    """
-    Service for Titan v2 embedding model.
-    
-    Handles generation of 1024-dimensional embedding vectors.
-    """
-    
-    def __init__(self):
-        """Initialize Titan embedding service."""
-        super().__init__()
-        self.model_id = "amazon.titan-embed-text-v2:0"
+        start_time = time.time()
+        result = self._retry_with_backoff(_invoke)
+        elapsed = time.time() - start_time
+        
+        logger.info(
+            f"Model invocation completed in {elapsed:.2f}s, "
+            f"generated {len(result)} characters"
+        )
+        
+        return result
     
     def generate_embedding(
         self,
         text: str,
-        dimensions: int = 1024,
         normalize: bool = True
     ) -> List[float]:
         """
-        Generate embedding vector for text.
+        Generate embedding using Titan v2 model.
         
         Args:
             text: Input text to embed
-            dimensions: Number of dimensions (default 1024)
-            normalize: Whether to normalize the vector
+            normalize: Whether to normalize the embedding (default: True)
             
         Returns:
-            List of float values representing the embedding vector
+            1024-dimensional embedding vector
             
         Raises:
-            Exception: If generation fails after retries
-            ValueError: If dimensions are invalid
-        """
-        if dimensions != 1024:
-            raise ValueError("Titan v2 only supports 1024 dimensions")
-        
-        def operation():
-            # Build request body
-            body = {
-                "inputText": text,
-                "dimensions": dimensions,
-                "normalize": normalize
-            }
+            ClientError: If generation fails after retries
+            ValueError: If embedding dimensions are incorrect
             
-            # Invoke model
+        Example:
+            >>> client = BedrockClient()
+            >>> embedding = client.generate_embedding("User taste profile...")
+            >>> len(embedding)
+            1024
+        """
+        # Build request body for Titan v2
+        body = {
+            "inputText": text,
+            "dimensions": 1024,
+            "normalize": normalize
+        }
+        
+        def _invoke():
             response = self.client.invoke_model(
-                modelId=self.model_id,
-                body=json.dumps(body)
+                modelId=self.titan_model,
+                body=json.dumps(body),
+                contentType="application/json",
+                accept="application/json"
             )
             
-            # Parse response
-            response_body = json.loads(response['body'].read())
+            response_body = json.loads(response["body"].read())
             
-            # Extract embedding vector
-            embedding = response_body.get('embedding')
+            # Extract embedding from response
+            embedding = response_body.get("embedding", [])
+            
             if not embedding:
-                raise Exception("No embedding in Titan response")
+                raise ValueError("No embedding returned from Titan")
             
-            # Validate dimensions
-            if len(embedding) != dimensions:
-                raise Exception(
-                    f"Invalid embedding dimensions: expected {dimensions}, "
-                    f"got {len(embedding)}"
+            if len(embedding) != 1024:
+                raise ValueError(
+                    f"Expected 1024-dimensional embedding, got {len(embedding)}"
                 )
             
             return embedding
         
-        try:
-            logger.info(f"Generating Titan embedding (dimensions={dimensions})")
-            result = self._retry_with_backoff(operation, max_retries=2)
-            logger.info("Titan embedding generation successful")
-            return result
-        except Exception as e:
-            logger.error(f"Titan embedding generation failed: {str(e)}")
-            raise Exception("Failed to generate taste profile")
+        start_time = time.time()
+        result = self._retry_with_backoff(_invoke)
+        elapsed = time.time() - start_time
+        
+        logger.info(
+            f"Titan embedding generated in {elapsed:.2f}s, "
+            f"dimensions={len(result)}"
+        )
+        
+        return result
 
 
-# Singleton instances
-_claude_service = None
-_titan_service = None
+class ClaudeService:
+    """
+    High-level service for Claude text generation.
+    
+    Provides convenient methods for specific use cases.
+    """
+    
+    def __init__(self, bedrock_client: Optional[BedrockClient] = None):
+        """
+        Initialize Claude service.
+        
+        Args:
+            bedrock_client: BedrockClient instance (creates new if None)
+        """
+        self.client = bedrock_client or BedrockClient()
+    
+    def generate_questions(
+        self,
+        prompt: str,
+        num_questions: int = 5,
+        context: Optional[str] = None
+    ) -> str:
+        """
+        Generate quiz questions using Claude.
+        
+        Args:
+            prompt: Question generation prompt
+            num_questions: Number of questions to generate
+            context: Additional context (e.g., previous answers)
+            
+        Returns:
+            Generated questions as JSON string
+        """
+        full_prompt = prompt
+        if context:
+            full_prompt = f"{context}\n\n{prompt}"
+        
+        return self.client.invoke_claude(
+            prompt=full_prompt,
+            max_tokens=4096,
+            temperature=0.8
+        )
+    
+    def generate_taste_dna(
+        self,
+        prompt: str,
+        quiz_summary: str
+    ) -> str:
+        """
+        Generate taste DNA profile using Claude.
+        
+        Args:
+            prompt: DNA generation prompt
+            quiz_summary: Summary of quiz answers
+            
+        Returns:
+            Generated DNA profile as JSON string
+        """
+        full_prompt = f"{prompt}\n\nQuiz Summary:\n{quiz_summary}"
+        
+        return self.client.invoke_claude(
+            prompt=full_prompt,
+            max_tokens=2048,
+            temperature=0.7
+        )
+    
+    def generate_growth_path(
+        self,
+        prompt: str,
+        dna_profile: str
+    ) -> str:
+        """
+        Generate growth path recommendations using Claude.
+        
+        Args:
+            prompt: Path generation prompt
+            dna_profile: User's taste DNA profile
+            
+        Returns:
+            Generated growth path as JSON string
+        """
+        full_prompt = f"{prompt}\n\nTaste DNA:\n{dna_profile}"
+        
+        return self.client.invoke_claude(
+            prompt=full_prompt,
+            max_tokens=3072,
+            temperature=0.7
+        )
+    
+    def generate_analytics(
+        self,
+        prompt: str,
+        user_data: str
+    ) -> str:
+        """
+        Generate behavioral analytics using Claude.
+        
+        Args:
+            prompt: Analytics generation prompt
+            user_data: User's DNA and path data
+            
+        Returns:
+            Generated analytics as JSON string
+        """
+        full_prompt = f"{prompt}\n\nUser Data:\n{user_data}"
+        
+        return self.client.invoke_claude(
+            prompt=full_prompt,
+            max_tokens=2048,
+            temperature=0.6
+        )
 
 
-def get_claude_service() -> ClaudeService:
-    """Get singleton Claude service instance."""
-    global _claude_service
-    if _claude_service is None:
-        _claude_service = ClaudeService()
-    return _claude_service
-
-
-def get_titan_service() -> TitanEmbeddingService:
-    """Get singleton Titan embedding service instance."""
-    global _titan_service
-    if _titan_service is None:
-        _titan_service = TitanEmbeddingService()
-    return _titan_service
+class TitanService:
+    """
+    High-level service for Titan embeddings.
+    
+    Provides convenient methods for embedding generation.
+    """
+    
+    def __init__(self, bedrock_client: Optional[BedrockClient] = None):
+        """
+        Initialize Titan service.
+        
+        Args:
+            bedrock_client: BedrockClient instance (creates new if None)
+        """
+        self.client = bedrock_client or BedrockClient()
+    
+    def embed_text(
+        self,
+        text: str,
+        normalize: bool = True
+    ) -> List[float]:
+        """
+        Generate embedding for text.
+        
+        Args:
+            text: Input text
+            normalize: Whether to normalize embedding
+            
+        Returns:
+            1024-dimensional embedding vector
+        """
+        return self.client.generate_embedding(text, normalize=normalize)

@@ -15,3 +15,6 @@ pydantic==2.5.3
 
 # Additional dependencies for production
 python-multipart==0.0.6
+
+# Numerical computing for vector operations
+numpy==1.26.3

@@ -1,0 +1,27 @@
+You are a cultural taste profiling expert. Based on the user's Section 1 answers, generate 5 adaptive follow-up questions that dive deeper into their specific interests.
+
+Section 1 Answers:
+{section1_context}
+
+Requirements:
+- Adapt questions based on their Section 1 responses
+- Explore nuances and specifics of their stated preferences
+- Questions should feel personalized and relevant
+- Each question should have 4-6 options
+- Allow multiple selections where appropriate
+- Categories: visual style, narrative preference, activity preference, cultural alignment, taste identity
+
+Return ONLY valid JSON in this exact format:
+{
+  "questions": [
+    {
+      "id": "q6",
+      "text": "Question text here?",
+      "category": "category_name",
+      "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+      "multiSelect": true
+    }
+  ]
+}
+
+Make the questions feel like a natural continuation of the conversation.

@@ -1,107 +1,151 @@
 """
 Generate Embedding Handler
 
-This module handles embedding generation from quiz answers using Titan v2.
-Implements caching and privacy-first storage (no raw answers stored).
+Generates taste embedding vector using Titan v2.
+Uses caching to avoid redundant API calls.
 """
 
 import logging
-import time
-import uuid
-from typing import Dict, Any, List
+from typing import Dict, List, Any
+from datetime import datetime
 
-from ..services.bedrock_client import get_titan_service
-from ..services.cache_service import get_cache_service
-from ..services.dynamodb_client import get_dynamodb_client
-from ..utils.embedding_builder import build_embedding_document, apply_weights
-from ..utils.vector_ops import normalize_vector
+from ..services.bedrock_client import TitanService
+from ..services.cache_service import CacheService
+from ..services.dynamodb_client import DynamoDBClient
+from ..utils.embedding_builder import (
+    build_embedding_document,
+    compute_document_hash,
+    format_answers_for_storage
+)
+from ..utils.vector_ops import normalize_vector, validate_vector
+from ..utils.validation import validate_user_id, validate_section1_answers, validate_section2_answers
 
 logger = logging.getLogger(__name__)
 
 
 def generate_embedding(
-    session_id: str,
     user_id: str,
-    all_answers: Dict[str, Any]
+    section1_answers: List[Dict[str, Any]],
+    section2_answers: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     """
-    Generate embedding vector from quiz answers.
-    
-    Builds embedding document, checks cache, generates vector with Titan v2,
-    applies weighting, normalizes, and stores in Users table.
+    Generate taste embedding vector.
     
     Args:
-        session_id: Session identifier
         user_id: User identifier
-        all_answers: Dictionary with section1 and section2 answers
+        section1_answers: Section 1 answers
+        section2_answers: Section 2 answers
         
     Returns:
         Dictionary with embeddingId and vector
         
     Raises:
-        Exception: If embedding generation fails
+        ValueError: If inputs invalid
+        Exception: If generation fails
     """
     try:
-        logger.info(f"Generating embedding for user: {user_id}, session: {session_id}")
+        # Validate inputs
+        validate_user_id(user_id)
+        validate_section1_answers(section1_answers)
+        validate_section2_answers(section2_answers)
         
-        # Build embedding document from quiz answers
-        document = build_embedding_document(all_answers)
-        logger.info(f"Built embedding document ({len(document)} chars)")
+        # Initialize services
+        titan = TitanService()
+        cache = CacheService()
+        db = DynamoDBClient()
         
-        # Check cache for existing embedding
-        cache = get_cache_service()
-        cached_vector = cache.get(document)
+        logger.info(f"Generating embedding for user {user_id}")
         
-        if cached_vector:
-            # Cache hit - use cached vector
-            logger.info("Using cached embedding vector")
-            vector = cached_vector
+        # Build embedding document
+        document = build_embedding_document(section1_answers, section2_answers)
+        doc_hash = compute_document_hash(document)
+        
+        logger.info(f"Document hash: {doc_hash[:16]}...")
+        
+        # Try cache first, generate if miss
+        def generate_new_embedding():
+            logger.info("Calling Titan to generate embedding...")
+            return titan.embed_text(document, normalize=True)
+        
+        embedding, was_cached = cache.get_or_generate(
+            document,
+            generate_new_embedding,
+            metadata={
+                "userId": user_id,
+                "documentLength": len(document)
+            }
+        )
+        
+        if was_cached:
+            logger.info("Using cached embedding")
         else:
-            # Cache miss - generate new embedding with Titan
-            logger.info("Cache miss - generating new embedding with Titan")
-            titan = get_titan_service()
-            vector = titan.generate_embedding(
-                text=document,
-                dimensions=1024,
-                normalize=True
-            )
-            
-            # Store in cache for future use
-            cache.put(document, vector)
+            logger.info("Generated new embedding")
         
-        # Apply weighting engine
-        weighted_vector = apply_weights(vector, all_answers)
+        # Validate embedding
+        validate_vector(embedding, expected_dim=1024, check_normalized=True)
         
-        # Normalize weighted vector to unit length
-        normalized_vector = normalize_vector(weighted_vector)
+        # Store embedding in Users table (NOT raw answers)
+        formatted_answers = format_answers_for_storage(section1_answers, section2_answers)
         
-        # Generate embedding ID
-        embedding_id = str(uuid.uuid4())
-        
-        # Store in Users table (NOT raw answers - privacy first!)
-        dynamodb = get_dynamodb_client()
-        timestamp = int(time.time())
-        
-        user_record = {
-            'userId': user_id,
-            'embeddingId': embedding_id,
-            'vector': normalized_vector,
-            'dimension': 1024,
-            'createdAt': timestamp,
-            'updatedAt': timestamp,
-            'quizVersion': 'v1'
+        user_data = {
+            "userId": user_id,
+            "embedding": embedding,
+            "embeddingHash": doc_hash,
+            "answerMetadata": formatted_answers,  # Only metadata, not raw answers
+            "createdAt": datetime.utcnow().isoformat(),
+            "updatedAt": datetime.utcnow().isoformat()
         }
         
-        dynamodb.put_item('Users', user_record)
+        # Check if user exists
+        existing_user = db.get_user(user_id)
+        if existing_user:
+            # Update existing user
+            db.update(
+                table_name=db.users_table,
+                key={"userId": user_id},
+                update_expression=(
+                    "SET embedding = :emb, "
+                    "embeddingHash = :hash, "
+                    "answerMetadata = :meta, "
+                    "updatedAt = :timestamp"
+                ),
+                expression_values={
+                    ":emb": embedding,
+                    ":hash": doc_hash,
+                    ":meta": formatted_answers,
+                    ":timestamp": datetime.utcnow().isoformat()
+                }
+            )
+        else:
+            # Create new user
+            db.put_user(user_data)
         
-        logger.info(f"Embedding stored successfully: {embedding_id}")
+        logger.info(f"Embedding stored for user {user_id}")
         
         return {
-            'embeddingId': embedding_id,
-            'vector': normalized_vector,
-            'dimension': 1024
+            "embeddingId": doc_hash,
+            "embedding": embedding,
+            "cached": was_cached
         }
         
     except Exception as e:
-        logger.error(f"Failed to generate embedding: {str(e)}", exc_info=True)
-        raise Exception("Failed to generate taste profile")
+        logger.error(f"Error generating embedding: {e}", exc_info=True)
+        raise
+
+
+if __name__ == "__main__":
+    # For testing
+    logging.basicConfig(level=logging.INFO)
+    
+    # Example usage
+    test_s1 = [
+        {"questionId": f"q{i}", "selectedOptions": ["opt"], "category": "test"}
+        for i in range(1, 6)
+    ]
+    test_s2 = [
+        {"questionId": f"q{i}", "selectedOptions": ["opt"], "category": "test"}
+        for i in range(6, 11)
+    ]
+    
+    # result = generate_embedding("test-user", test_s1, test_s2)
+    # print(f"Generated embedding: {len(result['embedding'])} dimensions")

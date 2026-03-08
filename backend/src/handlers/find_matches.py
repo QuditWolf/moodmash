@@ -1,128 +1,150 @@
 """
 Find Matches Handler
 
-This module handles finding taste matches using cosine similarity on embedding vectors.
+Finds users with similar taste profiles using cosine similarity.
 """
 
 import logging
-from typing import Dict, Any, List
+from typing import Dict, List, Any, Optional
 
-from ..services.dynamodb_client import get_dynamodb_client
+from ..services.dynamodb_client import DynamoDBClient
 from ..utils.vector_ops import cosine_similarity
+from ..utils.validation import validate_user_id
 
 logger = logging.getLogger(__name__)
 
 
-def find_matches(user_id: str, limit: int = 10) -> Dict[str, Any]:
+def find_matches(
+    user_id: str,
+    limit: int = 10,
+    min_similarity: float = 0.7
+) -> List[Dict[str, Any]]:
     """
-    Find taste matches for user based on embedding similarity.
-    
-    Calculates cosine similarity with all other users and returns top matches.
+    Find taste matches for user.
     
     Args:
         user_id: User identifier
         limit: Maximum number of matches to return (1-50)
+        min_similarity: Minimum similarity threshold (0.0-1.0)
         
     Returns:
-        Dictionary with list of matches
+        List of matches sorted by similarity (descending)
         
     Raises:
-        Exception: If user not found or matching fails
+        ValueError: If user not found or no embedding
+        Exception: If matching fails
     """
     try:
-        logger.info(f"Finding matches for user: {user_id}, limit: {limit}")
+        validate_user_id(user_id)
         
-        # Validate limit
         if limit < 1 or limit > 50:
             raise ValueError("Limit must be between 1 and 50")
         
-        # Retrieve user's embedding vector
-        dynamodb = get_dynamodb_client()
-        user = dynamodb.get_item('Users', {'userId': user_id})
+        if min_similarity < 0.0 or min_similarity > 1.0:
+            raise ValueError("Min similarity must be between 0.0 and 1.0")
         
+        db = DynamoDBClient()
+        
+        logger.info(f"Finding matches for user {user_id}")
+        
+        # Get user's embedding
+        user = db.get_user(user_id)
         if not user:
-            raise Exception("User not found")
+            raise ValueError(f"User not found: {user_id}")
         
-        user_vector = user.get('vector')
-        if not user_vector:
-            raise Exception("User embedding not found")
+        user_embedding = user.get("embedding")
+        if not user_embedding:
+            raise ValueError(f"User {user_id} has no embedding")
         
-        # Get all users
-        all_users = dynamodb.scan('Users')
+        # Scan all users (exclude requesting user)
+        all_users = db.scan_users()
         
-        # Calculate similarity with each user
         matches = []
         for other_user in all_users:
-            other_user_id = other_user.get('userId')
+            other_id = other_user.get("userId")
             
             # Skip self
-            if other_user_id == user_id:
+            if other_id == user_id:
                 continue
             
-            # Skip users without embeddings
-            other_vector = other_user.get('vector')
-            if not other_vector:
+            other_embedding = other_user.get("embedding")
+            if not other_embedding:
                 continue
             
-            # Calculate cosine similarity
-            similarity = cosine_similarity(user_vector, other_vector)
+            # Calculate similarity
+            try:
+                similarity = cosine_similarity(user_embedding, other_embedding)
+            except Exception as e:
+                logger.warning(f"Failed to calculate similarity with {other_id}: {e}")
+                continue
             
-            # Only include matches above threshold
-            if similarity > 0.7:
-                # Find shared traits
-                shared_traits = _find_shared_traits(
-                    user.get('tasteDNA', {}),
-                    other_user.get('tasteDNA', {})
-                )
-                
-                match = {
-                    'userId': other_user_id,
-                    'username': other_user.get('username', 'Anonymous'),
-                    'similarity': round(similarity, 3),
-                    'sharedTraits': shared_traits,
-                    'archetype': other_user.get('tasteDNA', {}).get('archetype', 'Unknown')
-                }
-                
-                matches.append(match)
+            # Filter by threshold
+            if similarity < min_similarity:
+                continue
+            
+            # Identify shared traits
+            shared_traits = _identify_shared_traits(
+                user.get("tasteDNA", {}),
+                other_user.get("tasteDNA", {})
+            )
+            
+            matches.append({
+                "userId": other_id,
+                "similarity": round(similarity, 4),
+                "tasteDNA": other_user.get("tasteDNA", {}),
+                "sharedTraits": shared_traits
+            })
         
-        # Sort by similarity descending
-        matches.sort(key=lambda x: x['similarity'], reverse=True)
+        # Sort by similarity (descending)
+        matches.sort(key=lambda x: x["similarity"], reverse=True)
         
         # Limit results
         matches = matches[:limit]
         
-        logger.info(f"Found {len(matches)} matches for user: {user_id}")
+        logger.info(f"Found {len(matches)} matches for user {user_id}")
         
-        return {'matches': matches}
+        return matches
         
     except Exception as e:
-        logger.error(f"Failed to find matches: {str(e)}", exc_info=True)
+        logger.error(f"Error finding matches: {e}", exc_info=True)
         raise
 
 
-def _find_shared_traits(dna1: Dict[str, Any], dna2: Dict[str, Any]) -> List[str]:
+def _identify_shared_traits(
+    dna1: Dict[str, Any],
+    dna2: Dict[str, Any]
+) -> List[str]:
     """
-    Find shared traits between two DNA profiles.
-    
-    Identifies traits that both users have with similar scores.
+    Identify shared traits between two DNA profiles.
     
     Args:
-        dna1: First user's DNA profile
-        dna2: Second user's DNA profile
+        dna1: First DNA profile
+        dna2: Second DNA profile
         
     Returns:
         List of shared trait names
     """
     shared = []
     
-    traits1 = {t['name']: t['score'] for t in dna1.get('traits', [])}
-    traits2 = {t['name']: t['score'] for t in dna2.get('traits', [])}
+    traits1 = {t.get("name"): t.get("score", 0) for t in dna1.get("traits", [])}
+    traits2 = {t.get("name"): t.get("score", 0) for t in dna2.get("traits", [])}
     
-    # Find traits present in both with similar scores (within 2 points)
-    for trait_name, score1 in traits1.items():
+    # Find traits that appear in both with similar scores
+    for trait_name in traits1:
         if trait_name in traits2:
+            score1 = traits1[trait_name]
             score2 = traits2[trait_name]
+            
+            # Consider shared if scores are within 2 points
             if abs(score1 - score2) <= 2.0:
                 shared.append(trait_name)
     
     return shared
+
+
+if __name__ == "__main__":
+    # For testing
+    logging.basicConfig(level=logging.INFO)
+    
+    # result = find_matches("test-user", limit=5)
+    # print(f"Found {len(result)} matches")

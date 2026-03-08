@@ -52,9 +52,9 @@ services:
       - USERS_TABLE=vibegraph-users
       - SESSIONS_TABLE=vibegraph-sessions
       - CACHE_TABLE=vibegraph-embedding-cache
-      # Bedrock Configuration
-      - BEDROCK_ENDPOINT=http://localstack:4566
-      - CLAUDE_MODEL=anthropic.claude-3-5-sonnet-20241022-v2:0
+      # Bedrock Configuration (commented out to use real AWS by default)
+      # - BEDROCK_ENDPOINT=http://localstack:4566
+      - CLAUDE_MODEL=amazon.nova-pro-v1:0
       - TITAN_MODEL=amazon.titan-embed-text-v2:0
       # Logging
       - LOG_LEVEL=INFO
@@ -63,7 +63,7 @@ services:
       # Hot reload for development
       - ./backend/api:/app:ro
       - ./backend/src:/app/src:ro
-      - ./prompts:/app/prompts:ro
+      - ./backend/prompts:/app/prompts:ro
       # Shared logs directory
       - ./logs:/app/logs
     networks:
@@ -113,7 +113,7 @@ services:
       # Hot reload for development
       - ./backend/handlers:/app:ro
       - ./backend/src:/app/src:ro
-      - ./prompts:/app/prompts:ro
+      - ./backend/prompts:/app/prompts:ro
       # Shared logs directory
       - ./logs:/app/logs
     networks:
@@ -230,6 +230,53 @@ services:
       retries: 5
       start_period: 30s
     restart: unless-stopped
+
+  # Backend Tests - Pytest test runner
+  backend-tests:
+    build:
+      context: ./backend
+      dockerfile: tests/Dockerfile
+    container_name: vibegraph-backend-tests
+    environment:
+      # AWS Configuration
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      # DynamoDB Configuration
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - USERS_TABLE=vibegraph-users
+      - SESSIONS_TABLE=vibegraph-sessions
+      - CACHE_TABLE=vibegraph-embedding-cache
+      # Bedrock Configuration
+      - BEDROCK_ENDPOINT=http://localstack:4566
+      - CLAUDE_MODEL=anthropic.claude-3-5-sonnet-20241022-v2:0
+      - TITAN_MODEL=amazon.titan-embed-text-v2:0
+      # Test Configuration
+      - PYTEST_TIMEOUT=300
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    volumes:
+      - ./backend/tests:/app/tests
+      - ./backend/src:/app/src
+      - ./backend/api:/app/api
+      - ./test-results:/app/test-results
+    networks:
+      - vibegraph-network
+    depends_on:
+      backend-api:
+        condition: service_healthy
+      dynamodb-local:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    profiles:
+      - test
+    command: >
+      sh -c "
+        echo 'Waiting for services to be ready...' &&
+        sleep 5 &&
+        pytest -v --tb=short --color=yes --cov=/app/src --cov-report=html:/app/test-results/coverage --cov-report=term /app/tests/
+      "
 
 # Networks
 networks:

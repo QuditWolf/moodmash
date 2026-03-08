@@ -58,85 +58,24 @@ async def start_section1(request: StartSection1Request):
         - questions: List of 5 foundational questions
     """
     try:
-        # Generate session ID
-        session_id = str(uuid.uuid4())
+        logger.info("Starting Section 1")
         
-        logger.info(f"Starting Section 1 for session {session_id}")
+        # Import handler
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+        from src.handlers.generate_section1 import generate_section1
         
-        # TODO: Call generateSection1 handler
-        # For now, return mock questions
-        questions = [
-            {
-                "id": "q1",
-                "text": "What type of content resonates with you most?",
-                "category": "content_preference",
-                "options": [
-                    "Visual art and photography",
-                    "Music and audio",
-                    "Written content and stories",
-                    "Video and film"
-                ],
-                "multiSelect": True
-            },
-            {
-                "id": "q2",
-                "text": "How do you prefer to discover new things?",
-                "category": "discovery_style",
-                "options": [
-                    "Through recommendations",
-                    "By exploring on my own",
-                    "From friends and community",
-                    "Trending and popular"
-                ],
-                "multiSelect": False
-            },
-            {
-                "id": "q3",
-                "text": "What mood do you seek in content?",
-                "category": "mood_preference",
-                "options": [
-                    "Energetic and uplifting",
-                    "Calm and reflective",
-                    "Thought-provoking",
-                    "Fun and entertaining"
-                ],
-                "multiSelect": True
-            },
-            {
-                "id": "q4",
-                "text": "How do you engage with culture?",
-                "category": "engagement_style",
-                "options": [
-                    "I create and share",
-                    "I observe and appreciate",
-                    "I discuss and analyze",
-                    "I collect and curate"
-                ],
-                "multiSelect": True
-            },
-            {
-                "id": "q5",
-                "text": "What draws you to a piece of content?",
-                "category": "attraction_factors",
-                "options": [
-                    "Aesthetic appeal",
-                    "Emotional impact",
-                    "Intellectual depth",
-                    "Cultural relevance"
-                ],
-                "multiSelect": True
-            }
-        ]
-        
-        # TODO: Store session in DynamoDB
+        # Call real handler
+        result = generate_section1()
         
         return StartSection1Response(
-            sessionId=session_id,
-            questions=questions
+            sessionId=result["sessionId"],
+            questions=result["questions"]
         )
         
     except Exception as e:
-        logger.error(f"Error starting Section 1: {e}")
+        logger.error(f"Error starting Section 1: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -151,79 +90,19 @@ async def generate_section2(request: GenerateSection2Request):
     try:
         logger.info(f"Generating Section 2 for session {request.sessionId}")
         
-        # TODO: Retrieve session from DynamoDB
-        # TODO: Call generateSection2 handler with Claude
+        # Import handler
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+        from src.handlers.generate_section2 import generate_section2 as gen_s2
         
-        # For now, return mock adaptive questions
-        questions = [
-            {
-                "id": "q6",
-                "text": "Which visual styles appeal to you?",
-                "category": "visual_style",
-                "options": [
-                    "Minimalist and clean",
-                    "Bold and colorful",
-                    "Dark and moody",
-                    "Natural and organic"
-                ],
-                "multiSelect": True
-            },
-            {
-                "id": "q7",
-                "text": "What kind of narratives interest you?",
-                "category": "narrative_preference",
-                "options": [
-                    "Personal stories",
-                    "Abstract concepts",
-                    "Social commentary",
-                    "Fantasy and imagination"
-                ],
-                "multiSelect": True
-            },
-            {
-                "id": "q8",
-                "text": "How do you like to spend your time?",
-                "category": "activity_preference",
-                "options": [
-                    "Creating something new",
-                    "Learning and exploring",
-                    "Connecting with others",
-                    "Relaxing and unwinding"
-                ],
-                "multiSelect": True
-            },
-            {
-                "id": "q9",
-                "text": "What cultural movements resonate with you?",
-                "category": "cultural_alignment",
-                "options": [
-                    "Contemporary and modern",
-                    "Classic and timeless",
-                    "Underground and alternative",
-                    "Mainstream and popular"
-                ],
-                "multiSelect": True
-            },
-            {
-                "id": "q10",
-                "text": "How do you define your taste?",
-                "category": "taste_identity",
-                "options": [
-                    "Eclectic and diverse",
-                    "Focused and specific",
-                    "Evolving and experimental",
-                    "Consistent and refined"
-                ],
-                "multiSelect": False
-            }
-        ]
+        # Call real handler
+        result = gen_s2(request.sessionId, request.section1Answers)
         
-        # TODO: Update session in DynamoDB
-        
-        return GenerateSection2Response(questions=questions)
+        return GenerateSection2Response(questions=result["questions"])
         
     except Exception as e:
-        logger.error(f"Error generating Section 2: {e}")
+        logger.error(f"Error generating Section 2: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -239,46 +118,36 @@ async def complete_quiz(request: CompleteQuizRequest):
     try:
         logger.info(f"Completing quiz for session {request.sessionId}, user {request.userId}")
         
-        # TODO: Retrieve session from DynamoDB
-        # TODO: Call generateEmbedding handler
-        # TODO: Call generateDNA handler
-        # TODO: Store results in Users table
+        # Import handlers
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+        from src.handlers.generate_embedding import generate_embedding
+        from src.handlers.generate_dna import generate_dna
         
-        # For now, return mock taste DNA
-        taste_dna = {
-            "archetype": "The Curator",
-            "description": "You have a refined eye for quality and meaning. You appreciate depth and authenticity in cultural expressions.",
-            "traits": [
-                {
-                    "name": "Aesthetic Sensitivity",
-                    "score": 0.85,
-                    "description": "Strong appreciation for visual beauty and design"
-                },
-                {
-                    "name": "Intellectual Curiosity",
-                    "score": 0.78,
-                    "description": "Drawn to thought-provoking and meaningful content"
-                },
-                {
-                    "name": "Cultural Awareness",
-                    "score": 0.82,
-                    "description": "Engaged with contemporary cultural movements"
-                }
-            ],
-            "categories": {
-                "visual": ["minimalist", "contemporary", "artistic"],
-                "mood": ["reflective", "inspiring", "authentic"],
-                "engagement": ["observe", "curate", "share"]
-            }
-        }
+        # Extract answers
+        section1_answers = request.allAnswers.get("section1", [])
+        section2_answers = request.allAnswers.get("section2", [])
         
-        embedding_id = str(uuid.uuid4())
+        # Generate embedding
+        embedding_result = generate_embedding(
+            request.userId,
+            section1_answers,
+            section2_answers
+        )
+        
+        # Generate DNA
+        dna_result = generate_dna(
+            request.userId,
+            section1_answers,
+            section2_answers
+        )
         
         return CompleteQuizResponse(
-            embeddingId=embedding_id,
-            tasteDNA=taste_dna
+            embeddingId=embedding_result["embeddingId"],
+            tasteDNA=dna_result
         )
         
     except Exception as e:
-        logger.error(f"Error completing quiz: {e}")
+        logger.error(f"Error completing quiz: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

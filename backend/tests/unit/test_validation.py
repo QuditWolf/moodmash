@@ -1,214 +1,364 @@
 """
-Unit tests for input validation functions.
+Unit Tests for Validation Utilities
 
-Tests validation of quiz answers, session IDs, user IDs, and other inputs.
+Tests input validation for quiz answers, IDs, and data structures.
 """
 
 import pytest
-from unittest.mock import Mock
+import uuid
+from src.utils.validation import (
+    validate_uuid,
+    validate_quiz_answers,
+    validate_section1_answers,
+    validate_section2_answers,
+    validate_answer_structure,
+    validate_user_id,
+    validate_session_id,
+    validate_taste_dna,
+    validate_growth_path
+)
 
 
-# Mock validation functions (replace with actual imports)
-def validate_session_id(session_id):
-    """Validate session ID is a valid UUID."""
-    import re
-    uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-    if not re.match(uuid_pattern, session_id, re.IGNORECASE):
-        raise ValueError("Invalid session ID format")
-    return True
-
-
-def validate_quiz_answers(answers, expected_count=5):
-    """Validate quiz answers structure."""
-    if not isinstance(answers, list):
-        raise ValueError("Answers must be a list")
-    
-    if len(answers) != expected_count:
-        raise ValueError(f"Expected {expected_count} answers, got {len(answers)}")
-    
-    for answer in answers:
-        if 'questionId' not in answer:
-            raise ValueError("Each answer must have questionId")
-        
-        if 'selectedOptions' not in answer:
-            raise ValueError("Each answer must have selectedOptions")
-        
-        if not isinstance(answer['selectedOptions'], list):
-            raise ValueError("selectedOptions must be a list")
-        
-        if len(answer['selectedOptions']) == 0:
-            raise ValueError("Each answer must have at least one selected option")
-        
-        for option in answer['selectedOptions']:
-            if not isinstance(option, str):
-                raise ValueError("Each option must be a string")
-            
-            if len(option) > 500:
-                raise ValueError("Option string must be at most 500 characters")
-    
-    return True
-
-
-def validate_embedding_vector(vector):
-    """Validate embedding vector structure."""
-    if not isinstance(vector, list):
-        raise ValueError("Vector must be a list")
-    
-    if len(vector) != 1024:
-        raise ValueError("Vector must have exactly 1024 dimensions")
-    
-    for value in vector:
-        if not isinstance(value, (int, float)):
-            raise ValueError("All vector values must be numbers")
-        
-        if value < -1.0 or value > 1.0:
-            raise ValueError("All vector values must be between -1 and 1")
-    
-    return True
-
-
-# ============================================================================
-# Unit Tests
-# ============================================================================
-
-class TestValidateSessionId:
-    """Test suite for session ID validation."""
+class TestValidateUUID:
+    """Test UUID validation."""
     
     def test_valid_uuid(self):
-        """Test that valid UUID passes validation."""
-        session_id = "550e8400-e29b-41d4-a716-446655440000"
-        assert validate_session_id(session_id) is True
+        """Test validation of valid UUID."""
+        valid_uuid = str(uuid.uuid4())
+        assert validate_uuid(valid_uuid)
     
-    def test_invalid_format_raises_error(self):
-        """Test that invalid format raises error."""
-        invalid_ids = [
-            "not-a-uuid",
-            "12345",
-            "550e8400-e29b-41d4-a716",  # Too short
-            "550e8400-e29b-41d4-a716-446655440000-extra",  # Too long
-            ""
-        ]
-        
-        for invalid_id in invalid_ids:
-            with pytest.raises(ValueError, match="Invalid session ID format"):
-                validate_session_id(invalid_id)
+    def test_invalid_uuid_raises(self):
+        """Test that invalid UUID raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid id"):
+            validate_uuid("not-a-uuid")
+    
+    def test_empty_string_raises(self):
+        """Test that empty string raises ValueError."""
+        with pytest.raises(ValueError):
+            validate_uuid("")
+    
+    def test_custom_field_name(self):
+        """Test custom field name in error message."""
+        with pytest.raises(ValueError, match="Invalid sessionId"):
+            validate_uuid("invalid", field_name="sessionId")
 
 
 class TestValidateQuizAnswers:
-    """Test suite for quiz answer validation."""
+    """Test quiz answer validation."""
     
-    def test_valid_answers(self):
-        """Test that valid answers pass validation."""
-        answers = [
+    @pytest.fixture
+    def valid_answers(self):
+        """Valid quiz answers."""
+        return [
             {
-                'questionId': 'q1',
-                'selectedOptions': ['Option A']
+                "questionId": "q1",
+                "selectedOptions": ["option1"],
+                "category": "test"
             },
             {
-                'questionId': 'q2',
-                'selectedOptions': ['Option B', 'Option C']
+                "questionId": "q2",
+                "selectedOptions": ["option2", "option3"],
+                "category": "test"
             },
             {
-                'questionId': 'q3',
-                'selectedOptions': ['Option A']
+                "questionId": "q3",
+                "selectedOptions": ["option4"],
+                "category": "test"
             },
             {
-                'questionId': 'q4',
-                'selectedOptions': ['Option D']
+                "questionId": "q4",
+                "selectedOptions": ["option5"],
+                "category": "test"
             },
             {
-                'questionId': 'q5',
-                'selectedOptions': ['Option A']
+                "questionId": "q5",
+                "selectedOptions": ["option6"],
+                "category": "test"
             }
         ]
-        
-        assert validate_quiz_answers(answers) is True
     
-    def test_wrong_count_raises_error(self):
-        """Test that wrong number of answers raises error."""
-        answers = [
-            {'questionId': 'q1', 'selectedOptions': ['Option A']},
-            {'questionId': 'q2', 'selectedOptions': ['Option B']}
-        ]
-        
-        with pytest.raises(ValueError, match="Expected 5 answers, got 2"):
-            validate_quiz_answers(answers)
+    def test_valid_answers(self, valid_answers):
+        """Test validation of valid answers."""
+        assert validate_quiz_answers(valid_answers, expected_count=5)
     
-    def test_missing_question_id_raises_error(self):
-        """Test that missing questionId raises error."""
-        answers = [
-            {'selectedOptions': ['Option A']}
-        ] * 5
-        
-        with pytest.raises(ValueError, match="Each answer must have questionId"):
-            validate_quiz_answers(answers)
+    def test_wrong_count_raises(self, valid_answers):
+        """Test that wrong answer count raises ValueError."""
+        with pytest.raises(ValueError, match="exactly 5 answers"):
+            validate_quiz_answers(valid_answers[:3], expected_count=5)
     
-    def test_missing_selected_options_raises_error(self):
-        """Test that missing selectedOptions raises error."""
-        answers = [
-            {'questionId': 'q1'}
-        ] * 5
+    def test_missing_question_id_raises(self, valid_answers):
+        """Test that missing questionId raises ValueError."""
+        invalid = valid_answers.copy()
+        del invalid[0]["questionId"]
         
-        with pytest.raises(ValueError, match="Each answer must have selectedOptions"):
-            validate_quiz_answers(answers)
+        with pytest.raises(ValueError, match="missing required field 'questionId'"):
+            validate_quiz_answers(invalid)
     
-    def test_empty_selected_options_raises_error(self):
-        """Test that empty selectedOptions raises error."""
-        answers = [
-            {'questionId': f'q{i}', 'selectedOptions': []}
-            for i in range(1, 6)
-        ]
+    def test_missing_selected_options_raises(self, valid_answers):
+        """Test that missing selectedOptions raises ValueError."""
+        invalid = valid_answers.copy()
+        del invalid[0]["selectedOptions"]
+        
+        with pytest.raises(ValueError, match="missing required field 'selectedOptions'"):
+            validate_quiz_answers(invalid)
+    
+    def test_empty_selected_options_raises(self, valid_answers):
+        """Test that empty selectedOptions raises ValueError."""
+        invalid = valid_answers.copy()
+        invalid[0]["selectedOptions"] = []
         
         with pytest.raises(ValueError, match="at least one selected option"):
-            validate_quiz_answers(answers)
+            validate_quiz_answers(invalid)
     
-    def test_option_too_long_raises_error(self):
-        """Test that option string over 500 chars raises error."""
-        long_option = 'A' * 501
+    def test_non_list_selected_options_raises(self, valid_answers):
+        """Test that non-list selectedOptions raises ValueError."""
+        invalid = valid_answers.copy()
+        invalid[0]["selectedOptions"] = "not a list"
+        
+        with pytest.raises(ValueError, match="must be a list"):
+            validate_quiz_answers(invalid)
+    
+    def test_non_string_option_raises(self, valid_answers):
+        """Test that non-string option raises ValueError."""
+        invalid = valid_answers.copy()
+        invalid[0]["selectedOptions"] = [123]
+        
+        with pytest.raises(ValueError, match="must be a string"):
+            validate_quiz_answers(invalid)
+    
+    def test_too_long_option_raises(self, valid_answers):
+        """Test that option exceeding 500 chars raises ValueError."""
+        invalid = valid_answers.copy()
+        invalid[0]["selectedOptions"] = ["x" * 501]
+        
+        with pytest.raises(ValueError, match="exceeds 500 characters"):
+            validate_quiz_answers(invalid)
+    
+    def test_empty_option_raises(self, valid_answers):
+        """Test that empty option string raises ValueError."""
+        invalid = valid_answers.copy()
+        invalid[0]["selectedOptions"] = ["   "]
+        
+        with pytest.raises(ValueError, match="cannot be empty"):
+            validate_quiz_answers(invalid)
+
+
+class TestValidateSection1Answers:
+    """Test Section 1 answer validation."""
+    
+    def test_valid_section1(self):
+        """Test validation of valid Section 1 answers."""
         answers = [
-            {'questionId': f'q{i}', 'selectedOptions': [long_option]}
+            {"questionId": f"q{i}", "selectedOptions": ["opt"]}
             for i in range(1, 6)
         ]
-        
-        with pytest.raises(ValueError, match="at most 500 characters"):
-            validate_quiz_answers(answers)
+        assert validate_section1_answers(answers)
+    
+    def test_wrong_count_raises(self):
+        """Test that wrong count raises ValueError with Section 1 in message."""
+        answers = [
+            {"questionId": "q1", "selectedOptions": ["opt"]}
+        ]
+        with pytest.raises(ValueError, match="Section 1"):
+            validate_section1_answers(answers)
 
 
-class TestValidateEmbeddingVector:
-    """Test suite for embedding vector validation."""
+class TestValidateSection2Answers:
+    """Test Section 2 answer validation."""
     
-    def test_valid_vector(self):
-        """Test that valid vector passes validation."""
-        vector = [0.5] * 1024
-        assert validate_embedding_vector(vector) is True
+    def test_valid_section2(self):
+        """Test validation of valid Section 2 answers."""
+        answers = [
+            {"questionId": f"q{i}", "selectedOptions": ["opt"]}
+            for i in range(6, 11)
+        ]
+        assert validate_section2_answers(answers)
     
-    def test_wrong_dimension_raises_error(self):
-        """Test that wrong dimension raises error."""
-        vector = [0.5] * 512
+    def test_wrong_count_raises(self):
+        """Test that wrong count raises ValueError with Section 2 in message."""
+        answers = [
+            {"questionId": "q6", "selectedOptions": ["opt"]}
+        ]
+        with pytest.raises(ValueError, match="Section 2"):
+            validate_section2_answers(answers)
+
+
+class TestValidateAnswerStructure:
+    """Test individual answer structure validation."""
+    
+    def test_valid_answer(self):
+        """Test validation of valid answer."""
+        answer = {
+            "questionId": "q1",
+            "selectedOptions": ["option1"]
+        }
+        assert validate_answer_structure(answer)
+    
+    def test_missing_field_raises(self):
+        """Test that missing field raises ValueError."""
+        answer = {"questionId": "q1"}
+        with pytest.raises(ValueError, match="missing required field"):
+            validate_answer_structure(answer)
+    
+    def test_empty_options_raises(self):
+        """Test that empty options raises ValueError."""
+        answer = {
+            "questionId": "q1",
+            "selectedOptions": []
+        }
+        with pytest.raises(ValueError, match="cannot be empty"):
+            validate_answer_structure(answer)
+
+
+class TestValidateUserId:
+    """Test user ID validation."""
+    
+    def test_valid_user_id(self):
+        """Test validation of valid user ID."""
+        assert validate_user_id("user123")
+        assert validate_user_id("user-123")
+        assert validate_user_id("user_123")
+    
+    def test_empty_user_id_raises(self):
+        """Test that empty user ID raises ValueError."""
+        with pytest.raises(ValueError, match="non-empty string"):
+            validate_user_id("")
+    
+    def test_too_long_user_id_raises(self):
+        """Test that user ID exceeding 128 chars raises ValueError."""
+        with pytest.raises(ValueError, match="cannot exceed 128"):
+            validate_user_id("x" * 129)
+    
+    def test_invalid_characters_raises(self):
+        """Test that invalid characters raise ValueError."""
+        with pytest.raises(ValueError, match="alphanumeric"):
+            validate_user_id("user@123")
+
+
+class TestValidateSessionId:
+    """Test session ID validation."""
+    
+    def test_valid_session_id(self):
+        """Test validation of valid session ID (UUID)."""
+        session_id = str(uuid.uuid4())
+        assert validate_session_id(session_id)
+    
+    def test_invalid_session_id_raises(self):
+        """Test that invalid session ID raises ValueError."""
+        with pytest.raises(ValueError, match="sessionId"):
+            validate_session_id("not-a-uuid")
+
+
+class TestValidateTasteDNA:
+    """Test taste DNA validation."""
+    
+    @pytest.fixture
+    def valid_dna(self):
+        """Valid taste DNA structure."""
+        return {
+            "archetype": "The Curator",
+            "description": "Refined taste profile",
+            "traits": [
+                {
+                    "name": "Aesthetic Sensitivity",
+                    "score": 8.5,
+                    "description": "High appreciation for beauty"
+                }
+            ],
+            "categories": {
+                "visual": ["minimalist", "contemporary"],
+                "mood": ["reflective"]
+            }
+        }
+    
+    def test_valid_dna(self, valid_dna):
+        """Test validation of valid taste DNA."""
+        assert validate_taste_dna(valid_dna)
+    
+    def test_missing_field_raises(self, valid_dna):
+        """Test that missing field raises ValueError."""
+        invalid = valid_dna.copy()
+        del invalid["archetype"]
         
-        with pytest.raises(ValueError, match="exactly 1024 dimensions"):
-            validate_embedding_vector(vector)
+        with pytest.raises(ValueError, match="missing required field"):
+            validate_taste_dna(invalid)
     
-    def test_value_out_of_bounds_raises_error(self):
-        """Test that values outside [-1, 1] raise error."""
-        # Value too high
-        vector = [1.5] + [0.5] * 1023
-        with pytest.raises(ValueError, match="between -1 and 1"):
-            validate_embedding_vector(vector)
+    def test_invalid_trait_score_raises(self, valid_dna):
+        """Test that invalid trait score raises ValueError."""
+        invalid = valid_dna.copy()
+        invalid["traits"][0]["score"] = 15  # Out of bounds
         
-        # Value too low
-        vector = [-1.5] + [0.5] * 1023
-        with pytest.raises(ValueError, match="between -1 and 1"):
-            validate_embedding_vector(vector)
+        with pytest.raises(ValueError, match="between 0 and 10"):
+            validate_taste_dna(invalid)
     
-    def test_non_numeric_value_raises_error(self):
-        """Test that non-numeric values raise error."""
-        vector = ['string'] + [0.5] * 1023
+    def test_missing_trait_field_raises(self, valid_dna):
+        """Test that missing trait field raises ValueError."""
+        invalid = valid_dna.copy()
+        del invalid["traits"][0]["score"]
         
-        with pytest.raises(ValueError, match="must be numbers"):
-            validate_embedding_vector(vector)
+        with pytest.raises(ValueError, match="must have 'name' and 'score'"):
+            validate_taste_dna(invalid)
+
+
+class TestValidateGrowthPath:
+    """Test growth path validation."""
     
-    def test_not_list_raises_error(self):
-        """Test that non-list input raises error."""
-        with pytest.raises(ValueError, match="Vector must be a list"):
-            validate_embedding_vector("not a list")
+    @pytest.fixture
+    def valid_path(self):
+        """Valid growth path structure."""
+        return {
+            "absorb": [
+                {"title": "Rec 1", "description": "Desc 1"},
+                {"title": "Rec 2", "description": "Desc 2"},
+                {"title": "Rec 3", "description": "Desc 3"}
+            ],
+            "create": [
+                {"title": "Rec 4", "description": "Desc 4"},
+                {"title": "Rec 5", "description": "Desc 5"},
+                {"title": "Rec 6", "description": "Desc 6"}
+            ],
+            "reflect": [
+                {"title": "Rec 7", "description": "Desc 7"},
+                {"title": "Rec 8", "description": "Desc 8"},
+                {"title": "Rec 9", "description": "Desc 9"}
+            ]
+        }
+    
+    def test_valid_path(self, valid_path):
+        """Test validation of valid growth path."""
+        assert validate_growth_path(valid_path)
+    
+    def test_missing_category_raises(self, valid_path):
+        """Test that missing category raises ValueError."""
+        invalid = valid_path.copy()
+        del invalid["absorb"]
+        
+        with pytest.raises(ValueError, match="missing required category"):
+            validate_growth_path(invalid)
+    
+    def test_too_few_recommendations_raises(self, valid_path):
+        """Test that too few recommendations raises ValueError."""
+        invalid = valid_path.copy()
+        invalid["absorb"] = [{"title": "Rec", "description": "Desc"}]
+        
+        with pytest.raises(ValueError, match="3-5 recommendations"):
+            validate_growth_path(invalid)
+    
+    def test_too_many_recommendations_raises(self, valid_path):
+        """Test that too many recommendations raises ValueError."""
+        invalid = valid_path.copy()
+        invalid["absorb"] = [
+            {"title": f"Rec {i}", "description": f"Desc {i}"}
+            for i in range(10)
+        ]
+        
+        with pytest.raises(ValueError, match="3-5 recommendations"):
+            validate_growth_path(invalid)
+    
+    def test_missing_recommendation_field_raises(self, valid_path):
+        """Test that missing recommendation field raises ValueError."""
+        invalid = valid_path.copy()
+        del invalid["absorb"][0]["title"]
+        
+        with pytest.raises(ValueError, match="must have 'title' and 'description'"):
+            validate_growth_path(invalid)

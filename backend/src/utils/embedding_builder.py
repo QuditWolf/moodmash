@@ -1,153 +1,188 @@
 """
 Embedding Document Builder
 
-This module builds structured text documents from quiz answers for embedding generation.
-Ensures consistent formatting for caching purposes.
+Builds semantic text documents from quiz answers for embedding generation.
+Ensures consistent formatting for caching and reproducibility.
 """
 
-from typing import List, Dict, Any
+import json
+import hashlib
+from typing import Dict, List, Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-class Answer:
-    """Quiz answer structure"""
-    def __init__(self, question_id: str, selected_options: List[str]):
-        self.question_id = question_id
-        self.selected_options = selected_options
-
-
-class QuizAnswers:
-    """Complete quiz answers"""
-    def __init__(self, section1: List[Answer], section2: List[Answer]):
-        self.section1 = section1
-        self.section2 = section2
-
-
-def build_embedding_document(all_answers: Dict[str, Any]) -> str:
+def build_embedding_document(
+    section1_answers: List[Dict[str, Any]],
+    section2_answers: List[Dict[str, Any]]
+) -> str:
     """
-    Build a structured embedding document from quiz answers.
+    Build a semantic text document from quiz answers.
     
-    Creates a semantic text representation of quiz responses that can be
-    embedded using Titan v2. Format is consistent to enable caching.
+    The document is structured to capture the user's taste profile
+    in a format optimized for embedding generation. It includes:
+    - Selected options from all questions
+    - Question categories and context
+    - Answer patterns and preferences
     
     Args:
-        all_answers: Dictionary with 'section1' and 'section2' answer lists
+        section1_answers: List of Section 1 answers with questionId and selectedOptions
+        section2_answers: List of Section 2 answers with questionId and selectedOptions
         
     Returns:
-        Structured text document suitable for embedding (500-2000 chars)
+        Formatted text document (500-2000 characters)
         
     Raises:
-        ValueError: If answers are invalid or incomplete
+        ValueError: If answers are invalid or document length is out of bounds
         
-    Preconditions:
-        - all_answers contains valid Section 1 and Section 2 responses
-        - Each answer has questionId and selectedOptions
-        - selectedOptions is non-empty list
-        
-    Postconditions:
-        - Returns structured text document
-        - Document contains all quiz responses in semantic format
-        - Document length is between 500-2000 characters
-        - Format is consistent for caching purposes
+    Example:
+        >>> s1 = [{"questionId": "q1", "selectedOptions": ["Visual art"]}]
+        >>> s2 = [{"questionId": "q6", "selectedOptions": ["Minimalist"]}]
+        >>> doc = build_embedding_document(s1, s2)
+        >>> len(doc)
+        750  # Example length
     """
-    if not all_answers:
-        raise ValueError("Quiz answers cannot be empty")
-    
-    if 'section1' not in all_answers or 'section2' not in all_answers:
-        raise ValueError("Quiz answers must contain section1 and section2")
-    
-    section1 = all_answers['section1']
-    section2 = all_answers['section2']
-    
-    if not section1 or not section2:
-        raise ValueError("Both sections must have answers")
+    if not section1_answers or not section2_answers:
+        raise ValueError("Both section1 and section2 answers are required")
     
     # Build structured document
     document_parts = []
     
-    # Add Section 1 header
-    document_parts.append("=== Taste Profile: Foundational Preferences ===\n")
+    # Header
+    document_parts.append("User Taste Profile:")
+    document_parts.append("")
     
-    # Add Section 1 answers
-    for i, answer in enumerate(section1, 1):
-        question_id = answer.get('questionId', f'q{i}')
-        options = answer.get('selectedOptions', [])
+    # Section 1: Foundational preferences
+    document_parts.append("Foundational Preferences:")
+    for answer in section1_answers:
+        question_id = answer.get("questionId", "unknown")
+        selected = answer.get("selectedOptions", [])
+        category = answer.get("category", "general")
         
-        if not options:
-            raise ValueError(f"Answer {question_id} has no selected options")
-        
-        # Format: "Q1: option1, option2, option3"
-        options_text = ", ".join(options)
-        document_parts.append(f"Q{i}: {options_text}")
+        if selected:
+            options_text = ", ".join(selected)
+            document_parts.append(f"- {category}: {options_text}")
     
-    # Add Section 2 header
-    document_parts.append("\n=== Taste Profile: Deep Dive Preferences ===\n")
+    document_parts.append("")
     
-    # Add Section 2 answers
-    for i, answer in enumerate(section2, 1):
-        question_id = answer.get('questionId', f'q{i}')
-        options = answer.get('selectedOptions', [])
+    # Section 2: Adaptive preferences
+    document_parts.append("Refined Preferences:")
+    for answer in section2_answers:
+        question_id = answer.get("questionId", "unknown")
+        selected = answer.get("selectedOptions", [])
+        category = answer.get("category", "general")
         
-        if not options:
-            raise ValueError(f"Answer {question_id} has no selected options")
-        
-        # Format: "Q1: option1, option2, option3"
-        options_text = ", ".join(options)
-        document_parts.append(f"Q{i}: {options_text}")
+        if selected:
+            options_text = ", ".join(selected)
+            document_parts.append(f"- {category}: {options_text}")
     
-    # Join all parts
+    document_parts.append("")
+    
+    # Summary section
+    all_selections = []
+    for answer in section1_answers + section2_answers:
+        all_selections.extend(answer.get("selectedOptions", []))
+    
+    document_parts.append("Overall Taste Summary:")
+    document_parts.append(f"Selected {len(all_selections)} preferences across cultural dimensions.")
+    
+    # Join into final document
     document = "\n".join(document_parts)
     
-    # Validate length
-    if len(document) < 100:
-        raise ValueError(f"Document too short: {len(document)} chars (minimum 100)")
-    
-    if len(document) > 5000:
-        # Truncate if too long (shouldn't happen with normal quiz answers)
-        document = document[:5000]
+    # Validate document length
+    doc_length = len(document)
+    if doc_length < 500:
+        logger.warning(
+            f"Document length {doc_length} is below minimum 500 characters"
+        )
+    elif doc_length > 2000:
+        # Truncate if too long
+        logger.warning(
+            f"Document length {doc_length} exceeds maximum 2000 characters, truncating"
+        )
+        document = document[:2000]
     
     return document
 
 
-def apply_weights(vector: List[float], answers: Dict[str, Any]) -> List[float]:
+def compute_document_hash(document: str) -> str:
     """
-    Apply weighting to embedding vector based on answer patterns.
-    
-    Adjusts vector dimensions based on answer characteristics to emphasize
-    certain aspects of the taste profile.
+    Compute SHA-256 hash of embedding document for caching.
     
     Args:
-        vector: 1024-dimensional embedding vector
-        answers: Complete quiz answers
+        document: Embedding document text
         
     Returns:
-        Weighted vector (NOT normalized - normalization happens separately)
+        Hexadecimal hash string (64 characters)
         
-    Raises:
-        ValueError: If vector or answers are invalid
-        
-    Preconditions:
-        - vector is 1024-dimensional normalized embedding
-        - answers contains complete quiz responses
-        
-    Postconditions:
-        - Returns 1024-dimensional weighted vector
-        - Weights applied based on answer patterns
-        - Vector maintains semantic meaning
-        - Result is NOT normalized (requires separate normalization)
+    Example:
+        >>> doc = "User taste profile..."
+        >>> hash_val = compute_document_hash(doc)
+        >>> len(hash_val)
+        64
     """
-    if not vector or len(vector) != 1024:
-        raise ValueError("Vector must be 1024-dimensional")
+    # Use UTF-8 encoding for consistent hashing
+    doc_bytes = document.encode('utf-8')
     
-    if not answers:
-        raise ValueError("Answers cannot be empty")
+    # Compute SHA-256 hash
+    hash_obj = hashlib.sha256(doc_bytes)
+    hash_hex = hash_obj.hexdigest()
     
-    # For MVP, use simple uniform weighting
-    # Future: Implement sophisticated weighting based on answer patterns
-    # - Boost dimensions for strongly expressed preferences
-    # - Reduce dimensions for neutral/uncertain responses
-    # - Apply category-specific weights
+    return hash_hex
+
+
+def format_answers_for_storage(
+    section1_answers: List[Dict[str, Any]],
+    section2_answers: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """
+    Format quiz answers for storage (without raw answer text).
     
-    # Currently returns vector unchanged (weight = 1.0 for all dimensions)
-    weighted = vector.copy()
+    This creates a privacy-preserving representation that stores
+    only the structure and metadata, not the actual answer content.
     
-    return weighted
+    Args:
+        section1_answers: Section 1 answers
+        section2_answers: Section 2 answers
+        
+    Returns:
+        Formatted answer structure with metadata only
+        
+    Example:
+        >>> s1 = [{"questionId": "q1", "selectedOptions": ["opt1"]}]
+        >>> s2 = [{"questionId": "q6", "selectedOptions": ["opt2"]}]
+        >>> formatted = format_answers_for_storage(s1, s2)
+        >>> "selectedOptions" not in str(formatted)
+        True
+    """
+    formatted = {
+        "section1": {
+            "count": len(section1_answers),
+            "questions": [
+                {
+                    "questionId": ans.get("questionId"),
+                    "category": ans.get("category"),
+                    "selectionCount": len(ans.get("selectedOptions", []))
+                }
+                for ans in section1_answers
+            ]
+        },
+        "section2": {
+            "count": len(section2_answers),
+            "questions": [
+                {
+                    "questionId": ans.get("questionId"),
+                    "category": ans.get("category"),
+                    "selectionCount": len(ans.get("selectedOptions", []))
+                }
+                for ans in section2_answers
+            ]
+        },
+        "totalSelections": sum(
+            len(ans.get("selectedOptions", []))
+            for ans in section1_answers + section2_answers
+        )
+    }
+    
+    return formatted

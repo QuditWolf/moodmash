@@ -27,17 +27,22 @@ services:
       - ENABLE_METRICS=true
       # Override endpoints for local access
       - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
-      - BEDROCK_ENDPOINT=http://localstack:4566
+      # BEDROCK_ENDPOINT - empty to use real AWS Bedrock (not LocalStack)
+      - BEDROCK_ENDPOINT=
       # CORS for local frontend
       - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
       # Python path
       - PYTHONPATH=/app
+      # AWS credentials from .env for ap-south-1 (India)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
     volumes:
       # Enable hot reload by mounting source code
       - ./backend/api:/app
       - ./backend/src:/app/src
       - ./backend/services:/app/services
-      - ./prompts:/app/prompts
+      - ./backend/prompts:/app/prompts
       # Mount logs for easy access
       - ./logs:/app/logs
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
@@ -48,12 +53,16 @@ services:
       - DEBUG=true
       - LOG_LEVEL=DEBUG
       - PYTHONPATH=/app:/app/src
+      # AWS credentials from .env
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
     volumes:
       # Enable hot reload by mounting source code
       - ./backend/handlers:/app
       - ./backend/src:/app/src
       - ./backend/services:/app/services
-      - ./prompts:/app/prompts
+      - ./backend/prompts:/app/prompts
       - ./logs:/app/logs
 
   # Backend services overrides for local development

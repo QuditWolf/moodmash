@@ -1,0 +1,29 @@
+You are a behavioral analyst. Based on the user's Taste DNA and growth path, generate insights about their cultural engagement patterns.
+
+User Data:
+{user_data}
+
+Requirements:
+- Identify 3-5 key insights about their taste patterns
+- Each insight should have a type (pattern, strength, opportunity)
+- Provide a title and description for each insight
+- Include engagement metrics if available
+- Be specific and actionable
+
+Return ONLY valid JSON in this exact format:
+{
+  "insights": [
+    {
+      "type": "pattern|strength|opportunity",
+      "title": "Insight title",
+      "description": "Detailed explanation of the insight"
+    }
+  ],
+  "engagement": {
+    "total_interactions": 0,
+    "favorite_categories": ["category1", "category2"],
+    "active_days": 0
+  }
+}
+
+Focus on patterns that help them understand their cultural identity better.

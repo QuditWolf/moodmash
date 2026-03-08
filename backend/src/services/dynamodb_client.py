@@ -1,285 +1,381 @@
 """
-DynamoDB Client Service
+DynamoDB Client
 
-This module provides a wrapper around boto3 DynamoDB client with retry logic
+Provides wrapper methods for DynamoDB operations with retry logic
 and error handling.
 """
 
+import boto3
 import os
 import time
 import logging
-from typing import Dict, Any, List, Optional
-import boto3
-from botocore.exceptions import ClientError
+from decimal import Decimal
+from typing import Dict, List, Any, Optional
+from botocore.exceptions import ClientError, BotoCoreError
 
 logger = logging.getLogger(__name__)
+
+
+def convert_floats_to_decimal(obj):
+    """
+    Recursively convert float values to Decimal for DynamoDB compatibility.
+    
+    Args:
+        obj: Object to convert (dict, list, float, or other)
+        
+    Returns:
+        Converted object with Decimals instead of floats
+    """
+    if isinstance(obj, list):
+        return [convert_floats_to_decimal(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: convert_floats_to_decimal(value) for key, value in obj.items()}
+    elif isinstance(obj, float):
+        return Decimal(str(obj))
+    else:
+        return obj
+
+
+def convert_decimal_to_float(obj):
+    """
+    Recursively convert Decimal values to float for JSON serialization.
+    
+    Args:
+        obj: Object to convert (dict, list, Decimal, or other)
+        
+    Returns:
+        Converted object with floats instead of Decimals
+    """
+    if isinstance(obj, list):
+        return [convert_decimal_to_float(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: convert_decimal_to_float(value) for key, value in obj.items()}
+    elif isinstance(obj, Decimal):
+        return float(obj)
+    else:
+        return obj
 
 
 class DynamoDBClient:
     """
     DynamoDB client with retry logic and error handling.
     
-    Provides methods for common DynamoDB operations with exponential backoff
-    retry logic for handling throttling and transient errors.
+    Supports both AWS DynamoDB and DynamoDB Local for development.
     """
     
-    def __init__(self):
-        """Initialize DynamoDB client."""
-        # Get endpoint URL from environment (for local development)
-        endpoint_url = os.getenv('DYNAMODB_ENDPOINT_URL')
+    def __init__(
+        self,
+        endpoint_url: Optional[str] = None,
+        region_name: str = "us-east-1",
+        max_retries: int = 3,
+        retry_delay: float = 0.1
+    ):
+        """
+        Initialize DynamoDB client.
         
-        # Configure boto3 client
-        if endpoint_url:
-            # Local development with DynamoDB Local
-            self.client = boto3.client(
-                'dynamodb',
-                endpoint_url=endpoint_url,
-                region_name=os.getenv('AWS_REGION', 'us-east-1'),
-                aws_access_key_id='dummy',
-                aws_secret_access_key='dummy'
-            )
-            self.resource = boto3.resource(
-                'dynamodb',
-                endpoint_url=endpoint_url,
-                region_name=os.getenv('AWS_REGION', 'us-east-1'),
-                aws_access_key_id='dummy',
-                aws_secret_access_key='dummy'
-            )
-        else:
-            # Production with real AWS
-            self.client = boto3.client('dynamodb')
-            self.resource = boto3.resource('dynamodb')
+        Args:
+            endpoint_url: DynamoDB endpoint (None for AWS, http://localhost:8000 for local)
+            region_name: AWS region
+            max_retries: Maximum number of retry attempts
+            retry_delay: Initial retry delay in seconds (exponential backoff)
+        """
+        self.endpoint_url = endpoint_url or os.getenv("DYNAMODB_ENDPOINT")
+        self.region_name = region_name
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
         
-        logger.info(f"DynamoDB client initialized (endpoint: {endpoint_url or 'AWS'})")
+        # Initialize boto3 client
+        client_kwargs = {
+            "service_name": "dynamodb",
+            "region_name": self.region_name
+        }
+        
+        if self.endpoint_url:
+            client_kwargs["endpoint_url"] = self.endpoint_url
+            logger.info(f"Using DynamoDB endpoint: {self.endpoint_url}")
+        
+        self.client = boto3.client(**client_kwargs)
+        self.resource = boto3.resource(**client_kwargs)
+        
+        # Table names from environment
+        self.users_table = os.getenv("USERS_TABLE", "vibegraph-users")
+        self.sessions_table = os.getenv("SESSIONS_TABLE", "vibegraph-sessions")
+        self.cache_table = os.getenv("CACHE_TABLE", "vibegraph-embedding-cache")
+        
+        logger.info(
+            f"DynamoDB client initialized: "
+            f"users={self.users_table}, "
+            f"sessions={self.sessions_table}, "
+            f"cache={self.cache_table}"
+        )
     
-    def _retry_with_backoff(self, operation, max_retries: int = 3):
+    def _retry_with_backoff(self, operation, *args, **kwargs):
         """
         Execute operation with exponential backoff retry logic.
         
         Args:
-            operation: Callable to execute
-            max_retries: Maximum number of retry attempts
+            operation: Function to execute
+            *args: Positional arguments for operation
+            **kwargs: Keyword arguments for operation
             
         Returns:
-            Result of operation
+            Operation result
             
         Raises:
-            Exception: If all retries fail
+            ClientError: If all retries fail
         """
-        delays = [0.1, 0.2, 0.4]  # 100ms, 200ms, 400ms
+        last_error = None
+        delay = self.retry_delay
         
-        for attempt in range(max_retries):
+        for attempt in range(self.max_retries):
             try:
-                return operation()
+                return operation(*args, **kwargs)
             except ClientError as e:
-                error_code = e.response['Error']['Code']
+                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                last_error = e
                 
                 # Retry on throttling or service errors
-                if error_code in ['ProvisionedThroughputExceededException', 
-                                 'ThrottlingException',
-                                 'ServiceUnavailable']:
-                    if attempt < max_retries - 1:
-                        delay = delays[attempt]
+                if error_code in ["ProvisionedThroughputExceededException", "ThrottlingException", "ServiceUnavailable"]:
+                    if attempt < self.max_retries - 1:
                         logger.warning(
                             f"DynamoDB {error_code}, retrying in {delay}s "
-                            f"(attempt {attempt + 1}/{max_retries})"
+                            f"(attempt {attempt + 1}/{self.max_retries})"
                         )
                         time.sleep(delay)
+                        delay *= 2  # Exponential backoff
                         continue
                 
                 # Don't retry on other errors
                 raise
-            except Exception as e:
-                # Don't retry on unexpected errors
-                logger.error(f"Unexpected error in DynamoDB operation: {str(e)}")
+            except BotoCoreError as e:
+                last_error = e
+                if attempt < self.max_retries - 1:
+                    logger.warning(
+                        f"BotoCore error, retrying in {delay}s "
+                        f"(attempt {attempt + 1}/{self.max_retries}): {e}"
+                    )
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
                 raise
         
         # All retries failed
-        raise Exception(f"DynamoDB operation failed after {max_retries} attempts")
+        raise last_error
     
-    def get_item(self, table_name: str, key: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """
-        Get item from DynamoDB table.
-        
-        Args:
-            table_name: Name of the table
-            key: Primary key of the item
-            
-        Returns:
-            Item dictionary or None if not found
-            
-        Raises:
-            Exception: If operation fails after retries
-        """
-        def operation():
-            table = self.resource.Table(table_name)
-            response = table.get_item(Key=key)
-            return response.get('Item')
-        
-        try:
-            return self._retry_with_backoff(operation)
-        except Exception as e:
-            logger.error(f"Failed to get item from {table_name}: {str(e)}")
-            raise
-    
-    def put_item(self, table_name: str, item: Dict[str, Any]) -> bool:
+    def put(self, table_name: str, item: Dict[str, Any]) -> Dict[str, Any]:
         """
         Put item into DynamoDB table.
         
         Args:
-            table_name: Name of the table
-            item: Item to store
+            table_name: Name of table
+            item: Item to put
             
         Returns:
-            True if successful
+            Response from DynamoDB
             
         Raises:
-            Exception: If operation fails after retries
+            ClientError: If operation fails after retries
         """
-        def operation():
-            table = self.resource.Table(table_name)
-            table.put_item(Item=item)
-            return True
+        table = self.resource.Table(table_name)
         
-        try:
-            return self._retry_with_backoff(operation)
-        except Exception as e:
-            logger.error(f"Failed to put item into {table_name}: {str(e)}")
-            raise
+        # Convert floats to Decimal for DynamoDB compatibility
+        item = convert_floats_to_decimal(item)
+        
+        def _put():
+            return table.put_item(Item=item)
+        
+        response = self._retry_with_backoff(_put)
+        logger.debug(f"Put item to {table_name}: {item.get('userId') or item.get('sessionId')}")
+        return response
     
-    def update_item(
+    def get(
         self,
         table_name: str,
         key: Dict[str, Any],
-        updates: Dict[str, Any]
+        consistent_read: bool = False
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get item from DynamoDB table.
+        
+        Args:
+            table_name: Name of table
+            key: Primary key of item
+            consistent_read: Whether to use consistent read
+            
+        Returns:
+            Item if found, None otherwise (with Decimals converted to floats)
+            
+        Raises:
+            ClientError: If operation fails after retries
+        """
+        table = self.resource.Table(table_name)
+        
+        def _get():
+            return table.get_item(Key=key, ConsistentRead=consistent_read)
+        
+        response = self._retry_with_backoff(_get)
+        item = response.get("Item")
+        
+        if item:
+            # Convert Decimals to floats for JSON serialization
+            item = convert_decimal_to_float(item)
+            logger.debug(f"Got item from {table_name}: {key}")
+        else:
+            logger.debug(f"Item not found in {table_name}: {key}")
+        
+        return item
+    
+    def update(
+        self,
+        table_name: str,
+        key: Dict[str, Any],
+        update_expression: str,
+        expression_values: Dict[str, Any],
+        expression_names: Optional[Dict[str, str]] = None,
+        return_values: str = "ALL_NEW"
     ) -> Dict[str, Any]:
         """
         Update item in DynamoDB table.
         
         Args:
-            table_name: Name of the table
-            key: Primary key of the item
-            updates: Dictionary of attributes to update
+            table_name: Name of table
+            key: Primary key of item
+            update_expression: Update expression
+            expression_values: Expression attribute values
+            expression_names: Expression attribute names (optional)
+            return_values: What to return (ALL_NEW, ALL_OLD, etc.)
             
         Returns:
-            Updated item
+            Updated item attributes
             
         Raises:
-            Exception: If operation fails after retries
+            ClientError: If operation fails after retries
         """
-        def operation():
-            table = self.resource.Table(table_name)
-            
-            # Build update expression
-            update_expr_parts = []
-            expr_attr_names = {}
-            expr_attr_values = {}
-            
-            for i, (attr, value) in enumerate(updates.items()):
-                placeholder = f"#attr{i}"
-                value_placeholder = f":val{i}"
-                update_expr_parts.append(f"{placeholder} = {value_placeholder}")
-                expr_attr_names[placeholder] = attr
-                expr_attr_values[value_placeholder] = value
-            
-            update_expression = "SET " + ", ".join(update_expr_parts)
-            
-            response = table.update_item(
-                Key=key,
-                UpdateExpression=update_expression,
-                ExpressionAttributeNames=expr_attr_names,
-                ExpressionAttributeValues=expr_attr_values,
-                ReturnValues='ALL_NEW'
-            )
-            
-            return response.get('Attributes')
+        table = self.resource.Table(table_name)
         
-        try:
-            return self._retry_with_backoff(operation)
-        except Exception as e:
-            logger.error(f"Failed to update item in {table_name}: {str(e)}")
-            raise
+        # Convert floats to Decimal for DynamoDB compatibility
+        expression_values = convert_floats_to_decimal(expression_values)
+        
+        def _update():
+            kwargs = {
+                "Key": key,
+                "UpdateExpression": update_expression,
+                "ExpressionAttributeValues": expression_values,
+                "ReturnValues": return_values
+            }
+            if expression_names:
+                kwargs["ExpressionAttributeNames"] = expression_names
+            return table.update_item(**kwargs)
+        
+        response = self._retry_with_backoff(_update)
+        logger.debug(f"Updated item in {table_name}: {key}")
+        return response.get("Attributes", {})
     
     def scan(
         self,
         table_name: str,
         filter_expression: Optional[str] = None,
-        expression_attr_values: Optional[Dict[str, Any]] = None
+        expression_values: Optional[Dict[str, Any]] = None,
+        limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Scan DynamoDB table.
         
         Args:
-            table_name: Name of the table
-            filter_expression: Optional filter expression
-            expression_attr_values: Optional expression attribute values
+            table_name: Name of table
+            filter_expression: Filter expression (optional)
+            expression_values: Expression attribute values (optional)
+            limit: Maximum number of items to return (optional)
             
         Returns:
-            List of items
+            List of items (with Decimals converted to floats)
             
         Raises:
-            Exception: If operation fails after retries
+            ClientError: If operation fails after retries
         """
-        def operation():
-            table = self.resource.Table(table_name)
-            
-            scan_kwargs = {}
+        table = self.resource.Table(table_name)
+        
+        def _scan():
+            kwargs = {}
             if filter_expression:
-                scan_kwargs['FilterExpression'] = filter_expression
-            if expression_attr_values:
-                scan_kwargs['ExpressionAttributeValues'] = expression_attr_values
+                kwargs["FilterExpression"] = filter_expression
+            if expression_values:
+                kwargs["ExpressionAttributeValues"] = expression_values
+            if limit:
+                kwargs["Limit"] = limit
             
-            items = []
-            response = table.scan(**scan_kwargs)
-            items.extend(response.get('Items', []))
+            response = table.scan(**kwargs)
+            items = response.get("Items", [])
             
-            # Handle pagination
-            while 'LastEvaluatedKey' in response:
-                scan_kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
-                response = table.scan(**scan_kwargs)
-                items.extend(response.get('Items', []))
+            # Handle pagination if needed
+            while "LastEvaluatedKey" in response and (not limit or len(items) < limit):
+                kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+                response = table.scan(**kwargs)
+                items.extend(response.get("Items", []))
+                
+                if limit and len(items) >= limit:
+                    items = items[:limit]
+                    break
             
             return items
         
-        try:
-            return self._retry_with_backoff(operation)
-        except Exception as e:
-            logger.error(f"Failed to scan {table_name}: {str(e)}")
-            raise
+        items = self._retry_with_backoff(_scan)
+        
+        # Convert Decimals to floats for JSON serialization
+        items = convert_decimal_to_float(items)
+        
+        logger.debug(f"Scanned {table_name}: found {len(items)} items")
+        return items
     
-    def delete_item(self, table_name: str, key: Dict[str, Any]) -> bool:
+    def delete(self, table_name: str, key: Dict[str, Any]) -> Dict[str, Any]:
         """
         Delete item from DynamoDB table.
         
         Args:
-            table_name: Name of the table
-            key: Primary key of the item
+            table_name: Name of table
+            key: Primary key of item
             
         Returns:
-            True if successful
+            Response from DynamoDB
             
         Raises:
-            Exception: If operation fails after retries
+            ClientError: If operation fails after retries
         """
-        def operation():
-            table = self.resource.Table(table_name)
-            table.delete_item(Key=key)
-            return True
+        table = self.resource.Table(table_name)
         
-        try:
-            return self._retry_with_backoff(operation)
-        except Exception as e:
-            logger.error(f"Failed to delete item from {table_name}: {str(e)}")
-            raise
-
-
-# Singleton instance
-_dynamodb_client = None
-
-
-def get_dynamodb_client() -> DynamoDBClient:
-    """Get singleton DynamoDB client instance."""
-    global _dynamodb_client
-    if _dynamodb_client is None:
-        _dynamodb_client = DynamoDBClient()
-    return _dynamodb_client
+        def _delete():
+            return table.delete_item(Key=key)
+        
+        response = self._retry_with_backoff(_delete)
+        logger.debug(f"Deleted item from {table_name}: {key}")
+        return response
+    
+    # Convenience methods for specific tables
+    
+    def put_user(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Put user data into Users table."""
+        return self.put(self.users_table, user_data)
+    
+    def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get user from Users table."""
+        return self.get(self.users_table, {"userId": user_id})
+    
+    def put_session(self, session_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Put session data into Sessions table."""
+        return self.put(self.sessions_table, session_data)
+    
+    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Get session from Sessions table."""
+        return self.get(self.sessions_table, {"sessionId": session_id})
+    
+    def put_cache(self, cache_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Put cache entry into Cache table."""
+        return self.put(self.cache_table, cache_data)
+    
+    def get_cache(self, doc_hash: str) -> Optional[Dict[str, Any]]:
+        """Get cache entry from Cache table."""
+        return self.get(self.cache_table, {"docHash": doc_hash})
+    
+    def scan_users(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Scan all users from Users table."""
+        return self.scan(self.users_table, limit=limit)

@@ -1,234 +1,131 @@
 """
 Generate DNA Handler
 
-This module handles generation of taste DNA profiles using Claude.
-Creates archetype, traits, and category profiles.
+Generates taste DNA profile using Claude.
 """
 
 import json
 import logging
-import time
-from typing import Dict, Any, List
+from datetime import datetime
+from typing import Dict, List, Any
 
-from ..services.bedrock_client import get_claude_service
-from ..services.dynamodb_client import get_dynamodb_client
+from ..services.bedrock_client import ClaudeService
+from ..services.dynamodb_client import DynamoDBClient
+from ..utils.validation import validate_user_id, validate_taste_dna
+from .generate_section1 import load_prompt
 
 logger = logging.getLogger(__name__)
 
 
-def generate_dna(user_id: str, all_answers: Dict[str, Any]) -> Dict[str, Any]:
+def generate_dna(
+    user_id: str,
+    section1_answers: List[Dict[str, Any]],
+    section2_answers: List[Dict[str, Any]]
+) -> Dict[str, Any]:
     """
-    Generate taste DNA profile from quiz answers.
-    
-    Uses Claude to analyze answers and create personalized archetype with traits.
+    Generate taste DNA profile.
     
     Args:
         user_id: User identifier
-        all_answers: Dictionary with section1 and section2 answers
+        section1_answers: Section 1 answers
+        section2_answers: Section 2 answers
         
     Returns:
-        Dictionary with taste DNA profile
+        Taste DNA profile dictionary
         
     Raises:
-        Exception: If DNA generation fails
+        ValueError: If inputs invalid or user not found
+        Exception: If generation fails
     """
     try:
-        logger.info(f"Generating DNA profile for user: {user_id}")
+        # Validate inputs
+        validate_user_id(user_id)
         
-        # Build answer summary for Claude
-        answer_summary = _summarize_answers(all_answers)
+        # Initialize services
+        claude = ClaudeService()
+        db = DynamoDBClient()
         
-        # Get DNA generation prompt
-        prompt = _get_dna_prompt(answer_summary)
+        logger.info(f"Generating DNA for user {user_id}")
         
-        # Call Claude to generate DNA profile
-        claude = get_claude_service()
-        response = claude.invoke(
-            prompt=prompt,
-            temperature=0.8,
-            max_tokens=1500
-        )
+        # Build quiz summary
+        summary_parts = ["Section 1 Responses:"]
+        for answer in section1_answers:
+            category = answer.get("category", "unknown")
+            selected = answer.get("selectedOptions", [])
+            summary_parts.append(f"- {category}: {', '.join(selected)}")
         
-        # Parse DNA profile from response
-        dna_profile = _parse_dna_profile(response)
+        summary_parts.append("\nSection 2 Responses:")
+        for answer in section2_answers:
+            category = answer.get("category", "unknown")
+            selected = answer.get("selectedOptions", [])
+            summary_parts.append(f"- {category}: {', '.join(selected)}")
+        
+        quiz_summary = "\n".join(summary_parts)
+        
+        # Load prompt and inject summary
+        prompt_template = load_prompt("dna_prompt.txt")
+        prompt = prompt_template.replace("{quiz_summary}", quiz_summary)
+        
+        # Call Claude to generate DNA
+        response_text = claude.generate_taste_dna(prompt, quiz_summary)
+        
+        # Parse JSON response
+        try:
+            dna_profile = json.loads(response_text)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse Claude response: {e}")
+            logger.error(f"Response text: {response_text}")
+            raise ValueError("Failed to parse DNA generation response")
         
         # Validate DNA structure
-        _validate_dna_profile(dna_profile)
+        validate_taste_dna(dna_profile)
         
-        # Store DNA profile in Users table
-        dynamodb = get_dynamodb_client()
-        timestamp = int(time.time())
+        # Store DNA in Users table
+        user = db.get_user(user_id)
+        if not user:
+            raise ValueError(f"User not found: {user_id}")
         
-        dynamodb.update_item(
-            'Users',
-            {'userId': user_id},
-            {
-                'tasteDNA': dna_profile,
-                'dnaGeneratedAt': timestamp,
-                'updatedAt': timestamp
+        db.update(
+            table_name=db.users_table,
+            key={"userId": user_id},
+            update_expression=(
+                "SET tasteDNA = :dna, "
+                "updatedAt = :timestamp"
+            ),
+            expression_values={
+                ":dna": dna_profile,
+                ":timestamp": datetime.utcnow().isoformat()
             }
         )
         
-        logger.info(f"DNA profile generated: {dna_profile['archetype']}")
+        logger.info(f"DNA generated and stored for user {user_id}")
         
         return dna_profile
         
     except Exception as e:
-        logger.error(f"Failed to generate DNA: {str(e)}", exc_info=True)
+        logger.error(f"Error generating DNA: {e}", exc_info=True)
         raise
 
 
-def _summarize_answers(all_answers: Dict[str, Any]) -> str:
-    """
-    Summarize quiz answers for DNA generation.
+if __name__ == "__main__":
+    # For testing
+    logging.basicConfig(level=logging.INFO)
     
-    Args:
-        all_answers: Dictionary with section1 and section2 answers
-        
-    Returns:
-        Summary string
-    """
-    summary_parts = []
+    # Example usage
+    test_s1 = [
+        {"questionId": "q1", "selectedOptions": ["Visual art"], "category": "content"},
+        {"questionId": "q2", "selectedOptions": ["Exploring"], "category": "discovery"},
+        {"questionId": "q3", "selectedOptions": ["Calm"], "category": "mood"},
+        {"questionId": "q4", "selectedOptions": ["Observe"], "category": "engagement"},
+        {"questionId": "q5", "selectedOptions": ["Aesthetic"], "category": "attraction"}
+    ]
+    test_s2 = [
+        {"questionId": "q6", "selectedOptions": ["Minimalist"], "category": "visual"},
+        {"questionId": "q7", "selectedOptions": ["Personal"], "category": "narrative"},
+        {"questionId": "q8", "selectedOptions": ["Learning"], "category": "activity"},
+        {"questionId": "q9", "selectedOptions": ["Contemporary"], "category": "cultural"},
+        {"questionId": "q10", "selectedOptions": ["Focused"], "category": "identity"}
+    ]
     
-    # Section 1
-    summary_parts.append("=== Section 1 Responses ===")
-    for i, answer in enumerate(all_answers.get('section1', []), 1):
-        options = answer.get('selectedOptions', [])
-        summary_parts.append(f"{i}. {', '.join(options)}")
-    
-    # Section 2
-    summary_parts.append("\n=== Section 2 Responses ===")
-    for i, answer in enumerate(all_answers.get('section2', []), 1):
-        options = answer.get('selectedOptions', [])
-        summary_parts.append(f"{i}. {', '.join(options)}")
-    
-    return "\n".join(summary_parts)
-
-
-def _get_dna_prompt(answer_summary: str) -> str:
-    """
-    Get prompt for DNA generation.
-    
-    Args:
-        answer_summary: Summary of quiz answers
-        
-    Returns:
-        Prompt text for Claude
-    """
-    return f"""You are a taste profiling expert analyzing someone's quiz responses to create their unique Taste DNA profile.
-
-Here are their quiz responses:
-
-{answer_summary}
-
-Based on these responses, create a comprehensive Taste DNA profile that includes:
-1. A memorable archetype name (e.g., "The Curious Explorer", "The Minimalist Curator")
-2. 5-7 personality traits with scores (0-10) and descriptions
-3. Category profiles showing their preferences across different content types
-4. An overall description of their taste personality
-
-Return ONLY a JSON object in this exact format:
-{{
-  "archetype": "The [Archetype Name]",
-  "traits": [
-    {{
-      "name": "Trait name",
-      "score": 7.5,
-      "description": "Brief description of this trait"
-    }}
-  ],
-  "categories": [
-    {{
-      "category": "Category name",
-      "preferences": ["Specific preference 1", "Specific preference 2"],
-      "intensity": 8.0
-    }}
-  ],
-  "description": "A paragraph describing their overall taste personality and what makes them unique"
-}}
-
-Make it insightful, accurate, and personally meaningful."""
-
-
-def _parse_dna_profile(claude_response: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Parse DNA profile from Claude response.
-    
-    Args:
-        claude_response: Response from Claude API
-        
-    Returns:
-        DNA profile dictionary
-        
-    Raises:
-        Exception: If parsing fails
-    """
-    try:
-        # Extract content from response
-        content = claude_response.get('content', [])
-        if not content:
-            raise Exception("No content in Claude response")
-        
-        text = content[0].get('text', '')
-        if not text:
-            raise Exception("No text in Claude response content")
-        
-        # Find JSON in response
-        json_start = text.find('{')
-        json_end = text.rfind('}') + 1
-        
-        if json_start == -1 or json_end == 0:
-            raise Exception("No JSON found in Claude response")
-        
-        json_text = text[json_start:json_end]
-        
-        # Parse JSON
-        dna_profile = json.loads(json_text)
-        
-        return dna_profile
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse JSON from Claude: {str(e)}")
-        raise Exception("Failed to parse DNA profile from AI response")
-    except Exception as e:
-        logger.error(f"Failed to parse DNA profile: {str(e)}")
-        raise
-
-
-def _validate_dna_profile(dna_profile: Dict[str, Any]) -> None:
-    """
-    Validate DNA profile structure.
-    
-    Args:
-        dna_profile: DNA profile to validate
-        
-    Raises:
-        ValueError: If validation fails
-    """
-    # Check required fields
-    required_fields = ['archetype', 'traits', 'categories', 'description']
-    for field in required_fields:
-        if field not in dna_profile:
-            raise ValueError(f"DNA profile missing required field: {field}")
-    
-    # Validate traits
-    traits = dna_profile['traits']
-    if not isinstance(traits, list) or len(traits) == 0:
-        raise ValueError("DNA profile must have at least one trait")
-    
-    for trait in traits:
-        if not all(k in trait for k in ['name', 'score', 'description']):
-            raise ValueError("Trait missing required fields")
-        
-        score = trait['score']
-        if not (0 <= score <= 10):
-            raise ValueError(f"Trait score must be 0-10, got {score}")
-    
-    # Validate categories
-    categories = dna_profile['categories']
-    if not isinstance(categories, list) or len(categories) == 0:
-        raise ValueError("DNA profile must have at least one category")
-    
-    for category in categories:
-        if not all(k in category for k in ['category', 'preferences', 'intensity']):
-            raise ValueError("Category missing required fields")
+    # result = generate_dna("test-user", test_s1, test_s2)
+    # print(json.dumps(result, indent=2))

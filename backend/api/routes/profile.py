@@ -42,6 +42,17 @@ class AnalyticsResponse(BaseModel):
     analytics: Dict[str, Any]
 
 
+class DNACardResponse(BaseModel):
+    imageId: str
+    imageData: str  # base64 encoded image
+    format: str
+    width: int
+    height: int
+    model: str
+    userId: str
+    archetype: str
+
+
 @router.get("/dna/{user_id}", response_model=TasteDNAResponse)
 async def get_taste_dna(user_id: str):
     """
@@ -97,37 +108,19 @@ async def get_growth_path(user_id: str):
     try:
         logger.info(f"Fetching growth path for user {user_id}")
         
-        # TODO: Retrieve from DynamoDB or generate with Claude
+        # Import handler
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+        from src.handlers.generate_path import generate_path
         
-        # Mock response
-        path = {
-            "absorb": [
-                {
-                    "title": "Explore minimalist photography",
-                    "description": "Discover the beauty in simplicity",
-                    "type": "visual"
-                }
-            ],
-            "create": [
-                {
-                    "title": "Start a visual journal",
-                    "description": "Document your aesthetic discoveries",
-                    "type": "activity"
-                }
-            ],
-            "reflect": [
-                {
-                    "title": "What draws you to certain aesthetics?",
-                    "description": "Explore your visual preferences",
-                    "type": "question"
-                }
-            ]
-        }
+        # Generate or retrieve path
+        path = generate_path(user_id)
         
         return GrowthPathResponse(path=path)
         
     except Exception as e:
-        logger.error(f"Error fetching growth path: {e}")
+        logger.error(f"Error fetching growth path: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -149,28 +142,19 @@ async def get_matches(
     try:
         logger.info(f"Fetching matches for user {user_id}, limit={limit}")
         
-        # TODO: Retrieve user embedding from DynamoDB
-        # TODO: Calculate cosine similarity with all users
-        # TODO: Filter by similarity > 0.7
-        # TODO: Sort and return top matches
+        # Import handler
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+        from src.handlers.find_matches import find_matches
         
-        # Mock response
-        matches = [
-            Match(
-                userId="user-123",
-                similarity=0.89,
-                tasteDNA={
-                    "archetype": "The Explorer",
-                    "traits": ["curious", "open-minded"]
-                },
-                sharedTraits=["aesthetic_sensitivity", "cultural_awareness"]
-            )
-        ]
+        # Find matches
+        matches = find_matches(user_id, limit=limit)
         
         return MatchesResponse(matches=matches)
         
     except Exception as e:
-        logger.error(f"Error fetching matches: {e}")
+        logger.error(f"Error fetching matches: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -188,26 +172,74 @@ async def get_analytics(user_id: str):
     try:
         logger.info(f"Fetching analytics for user {user_id}")
         
-        # TODO: Retrieve from DynamoDB or generate with Claude
+        # Import handler
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+        from src.handlers.generate_analytics import generate_analytics
         
-        # Mock response
-        analytics = {
-            "insights": [
-                {
-                    "type": "pattern",
-                    "title": "Visual Consistency",
-                    "description": "You gravitate toward minimalist aesthetics"
-                }
-            ],
-            "engagement": {
-                "total_interactions": 0,
-                "favorite_categories": ["visual", "design"],
-                "active_days": 0
-            }
-        }
+        # Generate analytics
+        analytics = generate_analytics(user_id)
         
         return AnalyticsResponse(analytics=analytics)
         
     except Exception as e:
-        logger.error(f"Error fetching analytics: {e}")
+        logger.error(f"Error fetching analytics: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/dna-card/{user_id}", response_model=DNACardResponse)
+async def generate_dna_card_image(
+    user_id: str,
+    model: str = Query(default="titan", regex="^(titan|nova|sdxl)$"),
+    width: int = Query(default=1024, ge=512, le=1536),
+    height: int = Query(default=1024, ge=512, le=1536)
+):
+    """
+    Generate visual DNA card image for user.
+    
+    This endpoint creates a highly detailed digital collage "Taste DNA Card"
+    that visually represents the user's cultural taste identity.
+    
+    Args:
+        user_id: User identifier
+        model: Image generation model ('titan', 'nova', or 'sdxl')
+        width: Image width in pixels (512-1536)
+        height: Image height in pixels (512-1536)
+        
+    Returns:
+        DNA card image data (base64 encoded) and metadata
+        
+    Note:
+        This requires AWS Bedrock access with image generation models enabled.
+        Supported models:
+        - titan: Amazon Titan Image Generator v2 (fast, good quality)
+        - nova: Amazon Nova Canvas (high quality, flexible)
+        - sdxl: Stability AI Stable Diffusion XL (slower, highest quality)
+    """
+    try:
+        logger.info(f"Generating DNA card image for user {user_id} with model {model}")
+        
+        # Import handler
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+        from src.handlers.generate_dna_card import generate_dna_card
+        
+        # Generate DNA card image
+        result = generate_dna_card(
+            user_id=user_id,
+            model=model,
+            width=width,
+            height=height
+        )
+        
+        return DNACardResponse(**result)
+        
+    except ValueError as e:
+        # User not found or missing DNA profile
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error generating DNA card: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

@@ -236,7 +236,7 @@ This implementation plan integrates the VibeGraph backend with the existing Reac
     - Include request/response examples
     - Document error codes and messages
 
-- [ ] 11. Implement core backend utilities
+- [x] 11. Implement core backend utilities
   - [ ] 11.1 Create vector operations in backend/utils/vector_ops.py
     - Implement normalize_vector() function
     - Implement cosine_similarity() function
@@ -258,7 +258,7 @@ This implementation plan integrates the VibeGraph backend with the existing Reac
     - Create docs/backend/utils/embedding-builder.md
     - Create docs/backend/utils/validation.md
 
-- [ ] 12. Implement backend service clients
+- [x] 12. Implement backend service clients
   - [ ] 12.1 Create DynamoDB client in backend/services/dynamodb_client.py
     - Implement get(), put(), update(), scan() methods
     - Configure endpoint for DynamoDB Local in Docker
@@ -280,7 +280,7 @@ This implementation plan integrates the VibeGraph backend with the existing Reac
     - Create docs/backend/services/bedrock.md
     - Create docs/backend/services/cache.md
 
-- [ ] 13. Implement backend handlers
+- [x] 13. Implement backend handlers
   - [ ] 13.1 Create generateSection1 handler in backend/handlers/generate_section1.py
     - Generate sessionId (no expiration tracking)
     - Call Claude to generate 5 foundational questions

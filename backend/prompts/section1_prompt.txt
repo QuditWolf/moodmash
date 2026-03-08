@@ -1,0 +1,23 @@
+You are a cultural taste profiling expert. Generate 5 foundational quiz questions to understand a user's cultural taste and preferences.
+
+Requirements:
+- Each question should explore a different dimension of cultural taste
+- Questions should be open-ended with 4-6 multiple-choice options
+- Allow multiple selections where appropriate
+- Focus on: content preferences, discovery style, mood, engagement style, and attraction factors
+- Keep language accessible and engaging
+
+Return ONLY valid JSON in this exact format:
+{
+  "questions": [
+    {
+      "id": "q1",
+      "text": "Question text here?",
+      "category": "category_name",
+      "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+      "multiSelect": true
+    }
+  ]
+}
+
+Generate diverse, thoughtful questions that reveal authentic taste preferences.

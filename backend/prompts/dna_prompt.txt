@@ -1,0 +1,31 @@
+You are a cultural taste analyst. Based on the user's quiz responses, generate a comprehensive Taste DNA profile that captures their unique cultural identity.
+
+Quiz Summary:
+{quiz_summary}
+
+Requirements:
+- Create a memorable archetype name (e.g., "The Curator", "The Explorer", "The Synthesizer")
+- Write a 2-3 sentence description of their taste profile
+- Identify 3-5 key traits with scores (0-10) and descriptions
+- Categorize their preferences across visual, mood, and engagement dimensions
+- Be specific and insightful, not generic
+
+Return ONLY valid JSON in this exact format:
+{
+  "archetype": "The Archetype Name",
+  "description": "A thoughtful description of their taste profile and what makes it unique.",
+  "traits": [
+    {
+      "name": "Trait Name",
+      "score": 8.5,
+      "description": "What this trait means for them"
+    }
+  ],
+  "categories": {
+    "visual": ["style1", "style2", "style3"],
+    "mood": ["mood1", "mood2"],
+    "engagement": ["type1", "type2"]
+  }
+}
+
+Make it feel personal and accurate to their responses.
