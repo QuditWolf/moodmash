@@ -1,0 +1,244 @@
+services:
+  # Frontend service - React app with nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      cache_from:
+        - vibegraph-frontend:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: vibegraph-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://backend-api:8000
+    volumes:
+      # Hot reload for development
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+    networks:
+      - vibegraph-network
+    depends_on:
+      backend-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # Backend API Gateway - FastAPI service
+  backend-api:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile
+      cache_from:
+        - vibegraph-backend-api:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: vibegraph-backend-api
+    ports:
+      - "8000:8000"
+    environment:
+      # AWS Configuration
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      # DynamoDB Configuration
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - USERS_TABLE=vibegraph-users
+      - SESSIONS_TABLE=vibegraph-sessions
+      - CACHE_TABLE=vibegraph-embedding-cache
+      # Bedrock Configuration
+      - BEDROCK_ENDPOINT=http://localstack:4566
+      - CLAUDE_MODEL=anthropic.claude-3-5-sonnet-20241022-v2:0
+      - TITAN_MODEL=amazon.titan-embed-text-v2:0
+      # Logging
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Hot reload for development
+      - ./backend/api:/app:ro
+      - ./backend/src:/app/src:ro
+      - ./prompts:/app/prompts:ro
+      # Shared logs directory
+      - ./logs:/app/logs
+    networks:
+      - vibegraph-network
+    depends_on:
+      dynamodb-local:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # Backend Handlers - Lambda function handlers
+  backend-handlers:
+    build:
+      context: ./backend/handlers
+      dockerfile: Dockerfile
+      cache_from:
+        - vibegraph-backend-handlers:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: vibegraph-backend-handlers
+    environment:
+      # AWS Configuration
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      # DynamoDB Configuration
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - USERS_TABLE=vibegraph-users
+      - SESSIONS_TABLE=vibegraph-sessions
+      - CACHE_TABLE=vibegraph-embedding-cache
+      # Bedrock Configuration
+      - BEDROCK_ENDPOINT=http://localstack:4566
+      - CLAUDE_MODEL=anthropic.claude-3-5-sonnet-20241022-v2:0
+      - TITAN_MODEL=amazon.titan-embed-text-v2:0
+      # Logging
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    volumes:
+      # Hot reload for development
+      - ./backend/handlers:/app:ro
+      - ./backend/src:/app/src:ro
+      - ./prompts:/app/prompts:ro
+      # Shared logs directory
+      - ./logs:/app/logs
+    networks:
+      - vibegraph-network
+    depends_on:
+      backend-services:
+        condition: service_started
+      dynamodb-local:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Backend Services - Shared service layer
+  backend-services:
+    build:
+      context: ./backend/services
+      dockerfile: Dockerfile
+      cache_from:
+        - vibegraph-backend-services:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: vibegraph-backend-services
+    environment:
+      # AWS Configuration
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      # DynamoDB Configuration
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - USERS_TABLE=vibegraph-users
+      - SESSIONS_TABLE=vibegraph-sessions
+      - CACHE_TABLE=vibegraph-embedding-cache
+      # Bedrock Configuration
+      - BEDROCK_ENDPOINT=http://localstack:4566
+      # Logging
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    volumes:
+      # Hot reload for development
+      - ./backend/services:/app:ro
+      - ./backend/src:/app/src:ro
+      # Shared logs directory
+      - ./logs:/app/logs
+    networks:
+      - vibegraph-network
+    depends_on:
+      dynamodb-local:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # DynamoDB Local - Local DynamoDB instance
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: vibegraph-dynamodb-local
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+    ports:
+      - "8001:8000"
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    networks:
+      - vibegraph-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # DynamoDB Initializer - Runs once to create tables
+  dynamodb-init:
+    build:
+      context: ./backend/scripts
+      dockerfile: Dockerfile.init
+    container_name: vibegraph-dynamodb-init
+    environment:
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - USERS_TABLE=vibegraph-users
+      - SESSIONS_TABLE=vibegraph-sessions
+      - CACHE_TABLE=vibegraph-embedding-cache
+    networks:
+      - vibegraph-network
+    depends_on:
+      dynamodb-local:
+        condition: service_healthy
+    restart: "no"
+
+  # LocalStack - Mock AWS services (Bedrock)
+  localstack:
+    image: localstack/localstack:latest
+    container_name: vibegraph-localstack
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+    environment:
+      - SERVICES=bedrock
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    networks:
+      - vibegraph-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+# Networks
+networks:
+  vibegraph-network:
+    driver: bridge
+    name: vibegraph-network
+
+# Volumes
+volumes:
+  # DynamoDB data persistence
+  dynamodb-data:
+    name: vibegraph-dynamodb-data

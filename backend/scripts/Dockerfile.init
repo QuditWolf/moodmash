@@ -1,0 +1,16 @@
+# Dockerfile for DynamoDB initialization script
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install boto3 for DynamoDB operations
+RUN pip install --no-cache-dir boto3
+
+# Copy the initialization script
+COPY init-dynamodb.py .
+
+# Make the script executable
+RUN chmod +x init-dynamodb.py
+
+# Run the initialization script
+CMD ["python", "init-dynamodb.py"]

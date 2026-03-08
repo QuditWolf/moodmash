@@ -1,0 +1,15 @@
+{
+  "name": "vibegraph-backend",
+  "version": "1.0.0",
+  "description": "VibeGraph Backend API",
+  "main": "api/main.py",
+  "scripts": {
+    "test": "pytest tests/ -v --cov=src --cov=api --cov-report=term-missing",
+    "test:watch": "pytest-watch tests/",
+    "test:unit": "pytest tests/unit/ -v",
+    "test:integration": "pytest tests/integration/ -v"
+  },
+  "keywords": ["vibegraph", "backend", "api"],
+  "author": "",
+  "license": "MIT"
+}
