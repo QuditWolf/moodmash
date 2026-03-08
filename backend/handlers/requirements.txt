@@ -1,0 +1,11 @@
+# AWS SDK for Python (AWS Bedrock integration)
+boto3==1.34.34
+
+# Numerical computing library for vector operations
+numpy==1.26.3
+
+# Data validation and settings management
+pydantic==2.5.3
+
+# Environment variable management
+python-dotenv==1.0.0

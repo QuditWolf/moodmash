@@ -8,9 +8,10 @@ const QuestionScreen = ({
   totalQuestions, 
   selectedOptions, 
   onToggleOption, 
-  onNext 
+  onNext,
+  loading = false
 }) => {
-  const canProceed = selectedOptions.length > 0;
+  const canProceed = selectedOptions.length > 0 && !loading;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6 py-12">
@@ -51,8 +52,17 @@ const QuestionScreen = ({
               }
             `}
           >
-            {currentIndex === totalQuestions - 1 ? 'Finish' : 'Next'}
-            <ArrowRight className="w-4 h-4" strokeWidth={2} />
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                Loading...
+              </>
+            ) : (
+              <>
+                {currentIndex === totalQuestions - 1 ? 'Finish' : 'Next'}
+                <ArrowRight className="w-4 h-4" strokeWidth={2} />
+              </>
+            )}
           </button>
         </div>
       </div>
