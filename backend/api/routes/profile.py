@@ -1,268 +1,213 @@
 """
 Profile API Routes
 
-This module defines the profile-related API endpoints for the VibeGraph backend.
-Handles taste DNA retrieval, growth path generation, matching, and analytics.
+Handles user profile data:
+- Taste DNA retrieval
+- Growth path recommendations
+- Taste matches
+- Behavioral analytics
 """
 
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
 import logging
-from typing import Dict, Any, List
-from datetime import datetime
-
-from fastapi import APIRouter, HTTPException, status, Query
-from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-# Create router for profile endpoints
-router = APIRouter(prefix="/api/profile", tags=["profile"])
+router = APIRouter(prefix="/profile", tags=["profile"])
 
 
-# Response Models (reusing some from quiz.py)
-class Trait(BaseModel):
-    """Taste DNA trait"""
-    name: str = Field(..., description="Trait name")
-    score: float = Field(..., ge=0, le=10, description="Trait score (0-10)")
-    description: str = Field(..., description="Trait description")
-
-
-class CategoryProfile(BaseModel):
-    """Category preference profile"""
-    category: str = Field(..., description="Category name")
-    preferences: List[str] = Field(..., description="Specific preferences")
-    intensity: float = Field(..., ge=0, le=10, description="Intensity score")
-
-
-class TasteDNA(BaseModel):
-    """Taste DNA profile"""
-    archetype: str = Field(..., description="Taste archetype name")
-    traits: List[Trait] = Field(..., description="Personality traits")
-    categories: List[CategoryProfile] = Field(..., description="Category profiles")
-    description: str = Field(..., description="Overall description")
-
-
+# Response Models
 class TasteDNAResponse(BaseModel):
-    """Response model for taste DNA retrieval"""
-    tasteDNA: TasteDNA = Field(..., description="User's taste DNA profile")
-
-
-class PathItem(BaseModel):
-    """Growth path recommendation item"""
-    id: str = Field(..., description="Recommendation identifier")
-    title: str = Field(..., description="Recommendation title")
-    description: str = Field(..., description="Detailed description")
-    category: str = Field(..., description="Content category")
-    estimatedTime: str = Field(..., description="Estimated time to complete")
-    difficulty: str = Field(..., description="Difficulty level: beginner, intermediate, advanced")
-
-
-class GrowthPath(BaseModel):
-    """Personalized growth path"""
-    absorb: List[PathItem] = Field(..., description="Content to absorb")
-    create: List[PathItem] = Field(..., description="Content to create")
-    reflect: List[PathItem] = Field(..., description="Content to reflect on")
-    generatedAt: int = Field(..., description="Generation timestamp")
+    tasteDNA: Dict[str, Any]
 
 
 class GrowthPathResponse(BaseModel):
-    """Response model for growth path retrieval"""
-    path: GrowthPath = Field(..., description="Personalized growth path")
+    path: Dict[str, Any]
 
 
 class Match(BaseModel):
-    """Taste match result"""
-    userId: str = Field(..., description="Matched user identifier")
-    username: str = Field(..., description="Matched user's username")
-    similarity: float = Field(..., ge=0, le=1, description="Similarity score (0-1)")
-    sharedTraits: List[str] = Field(..., description="Shared personality traits")
-    archetype: str = Field(..., description="Matched user's archetype")
+    userId: str
+    similarity: float
+    tasteDNA: Dict[str, Any]
+    sharedTraits: List[str]
 
 
 class MatchesResponse(BaseModel):
-    """Response model for matches retrieval"""
-    matches: List[Match] = Field(..., description="List of taste matches")
-
-
-class CategoryBalance(BaseModel):
-    """Content category balance"""
-    category: str = Field(..., description="Category name")
-    percentage: float = Field(..., ge=0, le=100, description="Percentage of consumption")
-    trend: str = Field(..., description="Trend: increasing, stable, decreasing")
-
-
-class Insight(BaseModel):
-    """Behavioral insight"""
-    type: str = Field(..., description="Insight type: strength, opportunity, pattern")
-    title: str = Field(..., description="Insight title")
-    description: str = Field(..., description="Detailed description")
-
-
-class AnalyticsData(BaseModel):
-    """Behavioral analytics data"""
-    passiveVsIntentionalRatio: float = Field(..., description="Passive vs intentional consumption ratio")
-    goalAlignment: float = Field(..., ge=0, le=10, description="Goal alignment score")
-    contentBalance: List[CategoryBalance] = Field(..., description="Content category balance")
-    insights: List[Insight] = Field(..., description="Behavioral insights")
-    recommendations: List[str] = Field(..., description="Personalized recommendations")
+    matches: List[Match]
 
 
 class AnalyticsResponse(BaseModel):
-    """Response model for analytics retrieval"""
-    analytics: AnalyticsData = Field(..., description="User analytics data")
+    analytics: Dict[str, Any]
 
 
-# Endpoints
-@router.get("/dna/{userId}", response_model=TasteDNAResponse, status_code=status.HTTP_200_OK)
-async def get_taste_dna(userId: str) -> TasteDNAResponse:
+@router.get("/dna/{user_id}", response_model=TasteDNAResponse)
+async def get_taste_dna(user_id: str):
     """
-    Retrieve user's taste DNA profile.
+    Get user's taste DNA profile.
     
     Args:
-        userId: User identifier
+        user_id: User identifier
         
     Returns:
-        TasteDNAResponse with user's taste DNA
-        
-    Raises:
-        HTTPException: 404 if user or DNA not found
-        HTTPException: 401 if unauthorized
+        Taste DNA with archetype, traits, and categories
     """
     try:
-        logger.info(f"Retrieving taste DNA for user: {userId}")
+        logger.info(f"Fetching taste DNA for user {user_id}")
         
-        # TODO: Import and call handler
-        # from backend.src.handlers.getTasteDNA import get_taste_dna
-        # result = await get_taste_dna(userId)
+        # TODO: Retrieve from DynamoDB Users table
         
-        # Placeholder response
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Taste DNA retrieval not yet implemented"
-        )
+        # Mock response
+        taste_dna = {
+            "archetype": "The Curator",
+            "description": "You have a refined eye for quality and meaning.",
+            "traits": [
+                {
+                    "name": "Aesthetic Sensitivity",
+                    "score": 0.85,
+                    "description": "Strong appreciation for visual beauty"
+                }
+            ],
+            "categories": {
+                "visual": ["minimalist", "contemporary"],
+                "mood": ["reflective", "inspiring"],
+                "engagement": ["observe", "curate"]
+            }
+        }
         
-    except HTTPException:
-        raise
+        return TasteDNAResponse(tasteDNA=taste_dna)
+        
     except Exception as e:
-        logger.error(f"Failed to retrieve taste DNA: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve taste DNA"
-        )
+        logger.error(f"Error fetching taste DNA: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/path/{userId}", response_model=GrowthPathResponse, status_code=status.HTTP_200_OK)
-async def get_growth_path(userId: str) -> GrowthPathResponse:
+@router.get("/path/{user_id}", response_model=GrowthPathResponse)
+async def get_growth_path(user_id: str):
     """
-    Retrieve or generate user's growth path.
+    Get user's personalized growth path.
     
     Args:
-        userId: User identifier
+        user_id: User identifier
         
     Returns:
-        GrowthPathResponse with personalized growth path
-        
-    Raises:
-        HTTPException: 404 if user not found
-        HTTPException: 401 if unauthorized
+        Growth path with Absorb/Create/Reflect recommendations
     """
     try:
-        logger.info(f"Retrieving growth path for user: {userId}")
+        logger.info(f"Fetching growth path for user {user_id}")
         
-        # TODO: Import and call handler
-        # from backend.src.handlers.generatePath import generate_path
-        # result = await generate_path(userId)
+        # TODO: Retrieve from DynamoDB or generate with Claude
         
-        # Placeholder response
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Growth path retrieval not yet implemented"
-        )
+        # Mock response
+        path = {
+            "absorb": [
+                {
+                    "title": "Explore minimalist photography",
+                    "description": "Discover the beauty in simplicity",
+                    "type": "visual"
+                }
+            ],
+            "create": [
+                {
+                    "title": "Start a visual journal",
+                    "description": "Document your aesthetic discoveries",
+                    "type": "activity"
+                }
+            ],
+            "reflect": [
+                {
+                    "title": "What draws you to certain aesthetics?",
+                    "description": "Explore your visual preferences",
+                    "type": "question"
+                }
+            ]
+        }
         
-    except HTTPException:
-        raise
+        return GrowthPathResponse(path=path)
+        
     except Exception as e:
-        logger.error(f"Failed to retrieve growth path: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve growth path"
-        )
+        logger.error(f"Error fetching growth path: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/matches/{userId}", response_model=MatchesResponse, status_code=status.HTTP_200_OK)
+@router.get("/matches/{user_id}", response_model=MatchesResponse)
 async def get_matches(
-    userId: str,
-    limit: int = Query(default=10, ge=1, le=50, description="Maximum number of matches to return")
-) -> MatchesResponse:
+    user_id: str,
+    limit: int = Query(default=10, ge=1, le=50)
+):
     """
-    Find taste matches for user.
+    Get taste matches for user.
     
     Args:
-        userId: User identifier
-        limit: Maximum number of matches (1-50, default 10)
+        user_id: User identifier
+        limit: Maximum number of matches (1-50)
         
     Returns:
-        MatchesResponse with list of matches
-        
-    Raises:
-        HTTPException: 404 if user or embedding not found
-        HTTPException: 401 if unauthorized
+        List of users with similar taste profiles
     """
     try:
-        logger.info(f"Finding matches for user: {userId}, limit: {limit}")
+        logger.info(f"Fetching matches for user {user_id}, limit={limit}")
         
-        # TODO: Import and call handler
-        # from backend.src.handlers.findMatches import find_matches
-        # result = await find_matches(userId, limit)
+        # TODO: Retrieve user embedding from DynamoDB
+        # TODO: Calculate cosine similarity with all users
+        # TODO: Filter by similarity > 0.7
+        # TODO: Sort and return top matches
         
-        # Placeholder response
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Match finding not yet implemented"
-        )
+        # Mock response
+        matches = [
+            Match(
+                userId="user-123",
+                similarity=0.89,
+                tasteDNA={
+                    "archetype": "The Explorer",
+                    "traits": ["curious", "open-minded"]
+                },
+                sharedTraits=["aesthetic_sensitivity", "cultural_awareness"]
+            )
+        ]
         
-    except HTTPException:
-        raise
+        return MatchesResponse(matches=matches)
+        
     except Exception as e:
-        logger.error(f"Failed to find matches: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to find matches"
-        )
+        logger.error(f"Error fetching matches: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/analytics/{userId}", response_model=AnalyticsResponse, status_code=status.HTTP_200_OK)
-async def get_analytics(userId: str) -> AnalyticsResponse:
+@router.get("/analytics/{user_id}", response_model=AnalyticsResponse)
+async def get_analytics(user_id: str):
     """
-    Retrieve or generate user's behavioral analytics.
+    Get behavioral analytics for user.
     
     Args:
-        userId: User identifier
+        user_id: User identifier
         
     Returns:
-        AnalyticsResponse with analytics data
-        
-    Raises:
-        HTTPException: 404 if user not found
-        HTTPException: 401 if unauthorized
+        Analytics with insights and patterns
     """
     try:
-        logger.info(f"Retrieving analytics for user: {userId}")
+        logger.info(f"Fetching analytics for user {user_id}")
         
-        # TODO: Import and call handler
-        # from backend.src.handlers.generateAnalytics import generate_analytics
-        # result = await generate_analytics(userId)
+        # TODO: Retrieve from DynamoDB or generate with Claude
         
-        # Placeholder response
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Analytics retrieval not yet implemented"
-        )
+        # Mock response
+        analytics = {
+            "insights": [
+                {
+                    "type": "pattern",
+                    "title": "Visual Consistency",
+                    "description": "You gravitate toward minimalist aesthetics"
+                }
+            ],
+            "engagement": {
+                "total_interactions": 0,
+                "favorite_categories": ["visual", "design"],
+                "active_days": 0
+            }
+        }
         
-    except HTTPException:
-        raise
+        return AnalyticsResponse(analytics=analytics)
+        
     except Exception as e:
-        logger.error(f"Failed to retrieve analytics: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve analytics"
-        )
+        logger.error(f"Error fetching analytics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
