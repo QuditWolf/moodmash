@@ -1,217 +1,158 @@
 export const onboardingQuestions = [
+  // Music (2 questions)
   {
-    id: 'music',
-    title: 'Pick music you vibe with',
-    category: 'music',
+    id: 'music_vibe',
+    domain: 'music',
+    title: 'Pick songs that match your vibe',
     options: [
-      'Indie Rock',
-      'Hip Hop',
-      'Bollywood',
-      'Electronic',
-      'Lo-fi',
-      'Jazz',
-      'Classical',
-      'Alternative',
-      'R&B',
-      'Folk',
-      'Metal',
-      'Pop'
-    ]
+      'Prateek Kuhad - cold/mess',
+      'AR Rahman - Kun Faya Kun',
+      'Nucleya - Bass Rani',
+      'Anuv Jain - BAARISHEIN',
+      'King - Maan Meri Jaan',
+      'Indian Ocean - Kandisa',
+      'Ritviz - Udd Gaye',
+      'Cigarettes After Sex',
+    ],
   },
   {
-    id: 'movies',
-    title: 'What films hit different?',
-    category: 'movies',
+    id: 'music_mood',
+    domain: 'music',
+    title: 'Your go-to music mood',
     options: [
-      'Psychological',
-      'Sci-Fi',
-      'Thriller',
-      'Romance',
-      'Documentary',
-      'Anime',
-      'Indie Cinema',
-      'Art Films',
-      'Horror',
-      'Comedy',
-      'Drama',
-      'Action'
-    ]
+      'Introspective indie',
+      'High-energy electronic',
+      'Soulful classics',
+      'Regional roots',
+      'Chill lo-fi beats',
+      'Live acoustic sessions',
+    ],
+  },
+
+  // Films (2 questions)
+  {
+    id: 'film_picks',
+    domain: 'films',
+    title: 'Films that hit different',
+    options: [
+      'Masaan',
+      'Dil Chahta Hai',
+      'Gangs of Wasseypur',
+      'Tumbbad',
+      'The Lunchbox',
+      'Ship of Theseus',
+      'Udaan',
+      'Pather Panchali',
+    ],
   },
   {
-    id: 'books',
-    title: 'Books that speak to you',
-    category: 'books',
+    id: 'story_theme',
+    domain: 'films',
+    title: 'Stories you connect with',
     options: [
-      'Philosophy',
-      'Sci-Fi',
+      'Identity and belonging',
+      'Love and relationships',
+      'Ambition and hustle',
+      'Mystery and thriller',
+      'Cultural roots',
+      'Everyday magic',
+    ],
+  },
+
+  // Visual & Creative (2 questions)
+  {
+    id: 'visual_style',
+    domain: 'visual',
+    title: 'Your aesthetic vibe',
+    options: [
+      'Minimalist and clean',
+      'Maximalist Indian textiles',
+      'Vintage and retro',
+      'Modern brutalist',
+      'Nature and organic',
+      'Pop art and bold colors',
+    ],
+  },
+  {
+    id: 'creative_time',
+    domain: 'creative',
+    title: 'In your free time, you...',
+    options: [
+      'Create something new',
+      'Deep dive into content',
+      'Learn new skills',
+      'Connect with people',
+      'Think and reflect',
+      'Explore and discover',
+    ],
+  },
+
+  // Books & Goals (2 questions)
+  {
+    id: 'books_interest',
+    domain: 'creative',
+    title: 'Books that interest you',
+    options: [
+      'Fiction and novels',
+      'Philosophy and essays',
+      'Self-help and growth',
+      'Biographies',
       'Poetry',
-      'Startups',
-      'Psychology',
-      'Fiction',
-      'Biography',
-      'Self-Help',
-      'History',
-      'Design',
-      'Technology',
-      'Fantasy'
-    ]
+      'Business and startups',
+    ],
   },
   {
-    id: 'art',
-    title: 'Art styles you appreciate',
-    category: 'art',
+    id: 'content_changed',
+    domain: 'consumption',
+    title: 'Content that changed you',
     options: [
-      'Abstract',
-      'Minimalism',
-      'Street Art',
-      'Contemporary',
-      'Digital Art',
-      'Photography',
-      'Illustration',
-      'Sculpture',
-      'Surrealism',
-      'Pop Art',
-      'Impressionism',
-      'Conceptual'
-    ]
+      'A powerful film scene',
+      'An eye-opening essay',
+      'A life-defining album',
+      'A creator\'s entire work',
+      'A meaningful conversation',
+      'A skill that unlocked others',
+    ],
   },
-  {
-    id: 'podcasts',
-    title: 'Podcasts you listen to',
-    category: 'podcasts',
-    options: [
-      'Tech Talks',
-      'Design',
-      'Startups',
-      'Creative Process',
-      'True Crime',
-      'Comedy',
-      'News',
-      'Science',
-      'Business',
-      'Culture',
-      'History',
-      'Sports'
-    ]
-  },
-  {
-    id: 'articles',
-    title: 'Topics you read about',
-    category: 'articles',
-    options: [
-      'Product Strategy',
-      'Design Systems',
-      'Engineering',
-      'Growth',
-      'AI/ML',
-      'Web3',
-      'Leadership',
-      'Marketing',
-      'UX Research',
-      'Data Science',
-      'DevOps',
-      'Productivity'
-    ]
-  },
-  {
-    id: 'creative',
-    title: 'Creative interests',
-    category: 'creative',
-    options: [
-      'Photography',
-      'Writing',
-      'Music Production',
-      'Video Editing',
-      'Graphic Design',
-      'UI/UX Design',
-      'Animation',
-      '3D Modeling',
-      'Illustration',
-      'Game Dev',
-      'Web Dev',
-      'Architecture'
-    ]
-  },
-  {
-    id: 'mood',
-    title: 'Content mood you prefer',
-    category: 'mood',
-    options: [
-      'Inspiring',
-      'Thought-provoking',
-      'Relaxing',
-      'Energetic',
-      'Dark',
-      'Uplifting',
-      'Experimental',
-      'Nostalgic',
-      'Futuristic',
-      'Raw',
-      'Polished',
-      'Authentic'
-    ]
-  },
-  {
-    id: 'format',
-    title: 'How you consume content',
-    category: 'format',
-    options: [
-      'Long reads',
-      'Quick bites',
-      'Visual first',
-      'Audio',
-      'Video',
-      'Interactive',
-      'Text heavy',
-      'Image heavy',
-      'Newsletters',
-      'Threads',
-      'Stories',
-      'Deep dives'
-    ]
-  },
-  {
-    id: 'discovery',
-    title: 'What drives your discovery',
-    category: 'discovery',
-    options: [
-      'Trending',
-      'Niche',
-      'Curated',
-      'Algorithmic',
-      'Community picks',
-      'Expert reviews',
-      'Personal taste',
-      'Serendipity',
-      'Data-driven',
-      'Recommendations',
-      'Exploration',
-      'Deep research'
-    ]
-  }
-];
+]
+
+export const goalOptions = [
+  'Build something that matters',
+  'Get technically excellent',
+  'Find what makes me happy',
+  'Start something of my own',
+  'Understand where I come from',
+  'Just inspire me and see what emerges',
+]
 
 export const generateTasteDNA = (answers) => {
-  // Simple archetype generation based on answers
-  const totalSelections = Object.values(answers).flat().length;
-  
-  let archetype = 'The Explorer';
-  if (totalSelections < 15) {
-    archetype = 'The Minimalist';
-  } else if (totalSelections > 30) {
-    archetype = 'The Omnivore';
-  } else if (answers.art?.length > 3 || answers.creative?.length > 3) {
-    archetype = 'The Creative';
-  } else if (answers.articles?.length > 3 || answers.books?.length > 3) {
-    archetype = 'The Intellectual';
+  // Simple archetype generation for backward compatibility
+  const allAnswers = Object.values(answers).flat()
+  const totalSelections = allAnswers.length
+
+  // Domain counts
+  const domainCounts = {}
+  onboardingQuestions.forEach((q) => {
+    const a = answers[q.id] || []
+    domainCounts[q.domain] = (domainCounts[q.domain] || 0) + a.length
+  })
+
+  const topDomain = Object.entries(domainCounts).sort((a, b) => b[1] - a[1])[0]?.[0]
+
+  let archetype = 'The Explorer'
+  if (totalSelections < 10) {
+    archetype = 'The Minimalist'
+  } else if (totalSelections > 25) {
+    archetype = 'The Omnivore'
+  } else if (topDomain === 'visual' || topDomain === 'creative') {
+    archetype = 'The Creative'
+  } else if (topDomain === 'films' || topDomain === 'consumption') {
+    archetype = 'The Intellectual'
   }
-  
+
   return {
     archetype,
-    music: answers.music?.slice(0, 3).join(' / ') || 'Not specified',
-    movies: answers.movies?.slice(0, 3).join(' / ') || 'Not specified',
-    books: answers.books?.slice(0, 3).join(' / ') || 'Not specified',
-    art: answers.art?.slice(0, 3).join(' / ') || 'Not specified',
-    podcasts: answers.podcasts?.slice(0, 3).join(' / ') || 'Not specified',
-  };
-};
+    domains: domainCounts,
+    topSelections: allAnswers.slice(0, 5),
+  }
+}

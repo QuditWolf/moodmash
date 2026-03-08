@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for f in SETUP.md frontend/src/App.css frontend/src/components/CompactCard.jsx frontend/src/components/FeedCard/FeedCard.jsx frontend/src/components/FeedItem.jsx frontend/src/components/FeedPage.jsx frontend/src/components/FeedSection/FeedSection.jsx frontend/src/components/MediaCard.jsx frontend/src/components/RevealOnScroll.jsx frontend/src/components/SectionHeader.jsx frontend/src/components/Sidebar.jsx frontend/src/components/VideoCard.jsx package.json src/App.jsx src/components/Sidebar/Sidebar.jsx)",
+      "Bash(do echo \"=== $f ===\")",
+      "Read(//workspace/moodmash/**)",
+      "Bash(done)"
+    ]
+  }
+}
