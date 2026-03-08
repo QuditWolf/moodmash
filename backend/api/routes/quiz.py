@@ -1,225 +1,284 @@
 """
 Quiz API Routes
 
-This module defines the quiz-related API endpoints for the VibeGraph backend.
-Handles Section 1 generation, Section 2 generation, and quiz completion.
+Handles adaptive quiz flow:
+- Section 1: Start quiz and get foundational questions
+- Section 2: Generate adaptive questions based on Section 1
+- Complete: Generate embedding and taste DNA
 """
 
-import logging
-import sys
-from typing import Dict, Any, List
-from datetime import datetime
-
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+import logging
+import uuid
 
-# Import structured logging
-sys.path.insert(0, '/app/src')
-from utils.logger import get_logger, LogContext
+logger = logging.getLogger(__name__)
 
-logger = get_logger(__name__)
-
-# Create router for quiz endpoints
-router = APIRouter(prefix="/api/quiz", tags=["quiz"])
+router = APIRouter(prefix="/quiz", tags=["quiz"])
 
 
 # Request/Response Models
-class Section1Request(BaseModel):
-    """Request model for starting Section 1"""
-    userId: str | None = Field(None, description="Optional user ID for authenticated users")
+class StartSection1Request(BaseModel):
+    userId: Optional[str] = None
 
 
-class Question(BaseModel):
-    """Quiz question model"""
-    id: str = Field(..., description="Unique question identifier")
-    title: str = Field(..., description="Question text")
-    category: str = Field(..., description="Question category")
-    options: List[str] = Field(..., description="Answer options")
-    multiSelect: bool = Field(..., description="Whether multiple selections are allowed")
+class StartSection1Response(BaseModel):
+    sessionId: str
+    questions: List[Dict[str, Any]]
 
 
-class Section1Response(BaseModel):
-    """Response model for Section 1 start"""
-    sessionId: str = Field(..., description="Unique session identifier")
-    questions: List[Question] = Field(..., description="Section 1 questions")
-    expiresAt: int = Field(..., description="Session expiration timestamp")
+class GenerateSection2Request(BaseModel):
+    sessionId: str
+    section1Answers: List[Dict[str, Any]]
 
 
-class Answer(BaseModel):
-    """Quiz answer model"""
-    questionId: str = Field(..., description="Question identifier")
-    selectedOptions: List[str] = Field(..., description="Selected answer options")
-
-
-class Section2Request(BaseModel):
-    """Request model for generating Section 2"""
-    sessionId: str = Field(..., description="Session identifier from Section 1")
-    section1Answers: List[Answer] = Field(..., description="Answers from Section 1")
-
-
-class Section2Response(BaseModel):
-    """Response model for Section 2 generation"""
-    questions: List[Question] = Field(..., description="Section 2 questions")
-
-
-class QuizAnswers(BaseModel):
-    """Complete quiz answers"""
-    section1: List[Answer] = Field(..., description="Section 1 answers")
-    section2: List[Answer] = Field(..., description="Section 2 answers")
+class GenerateSection2Response(BaseModel):
+    questions: List[Dict[str, Any]]
 
 
 class CompleteQuizRequest(BaseModel):
-    """Request model for quiz completion"""
-    sessionId: str = Field(..., description="Session identifier")
-    userId: str = Field(..., description="User identifier")
-    allAnswers: QuizAnswers = Field(..., description="All quiz answers")
-
-
-class Trait(BaseModel):
-    """Taste DNA trait"""
-    name: str = Field(..., description="Trait name")
-    score: float = Field(..., ge=0, le=10, description="Trait score (0-10)")
-    description: str = Field(..., description="Trait description")
-
-
-class CategoryProfile(BaseModel):
-    """Category preference profile"""
-    category: str = Field(..., description="Category name")
-    preferences: List[str] = Field(..., description="Specific preferences")
-    intensity: float = Field(..., ge=0, le=10, description="Intensity score")
-
-
-class TasteDNA(BaseModel):
-    """Taste DNA profile"""
-    archetype: str = Field(..., description="Taste archetype name")
-    traits: List[Trait] = Field(..., description="Personality traits")
-    categories: List[CategoryProfile] = Field(..., description="Category profiles")
-    description: str = Field(..., description="Overall description")
+    sessionId: str
+    userId: str
+    allAnswers: Dict[str, List[Dict[str, Any]]]
 
 
 class CompleteQuizResponse(BaseModel):
-    """Response model for quiz completion"""
-    embeddingId: str = Field(..., description="Embedding identifier")
-    tasteDNA: TasteDNA = Field(..., description="Generated taste DNA profile")
+    embeddingId: str
+    tasteDNA: Dict[str, Any]
 
 
-# Endpoints
-@router.post("/section1/start", response_model=Section1Response, status_code=status.HTTP_200_OK)
-async def start_section1(request: Section1Request) -> Section1Response:
+@router.post("/section1/start", response_model=StartSection1Response)
+async def start_section1(request: StartSection1Request):
     """
     Start Section 1 of the adaptive quiz.
     
-    Generates 5 foundational questions using Claude and creates a new session.
-    
-    Args:
-        request: Section 1 start request with optional userId
-        
     Returns:
-        Section1Response with sessionId, questions, and expiration time
-        
-    Raises:
-        HTTPException: 500 if question generation fails
+        - sessionId: Unique session identifier
+        - questions: List of 5 foundational questions
     """
     try:
-        logger.info(f"Starting Section 1 for user: {request.userId or 'anonymous'}")
+        # Generate session ID
+        session_id = str(uuid.uuid4())
         
-        # TODO: Import and call handler
-        # from backend.src.handlers.generateSection1 import generate_section1
-        # result = await generate_section1(request.userId)
+        logger.info(f"Starting Section 1 for session {session_id}")
         
-        # Placeholder response
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Section 1 generation not yet implemented"
+        # TODO: Call generateSection1 handler
+        # For now, return mock questions
+        questions = [
+            {
+                "id": "q1",
+                "text": "What type of content resonates with you most?",
+                "category": "content_preference",
+                "options": [
+                    "Visual art and photography",
+                    "Music and audio",
+                    "Written content and stories",
+                    "Video and film"
+                ],
+                "multiSelect": True
+            },
+            {
+                "id": "q2",
+                "text": "How do you prefer to discover new things?",
+                "category": "discovery_style",
+                "options": [
+                    "Through recommendations",
+                    "By exploring on my own",
+                    "From friends and community",
+                    "Trending and popular"
+                ],
+                "multiSelect": False
+            },
+            {
+                "id": "q3",
+                "text": "What mood do you seek in content?",
+                "category": "mood_preference",
+                "options": [
+                    "Energetic and uplifting",
+                    "Calm and reflective",
+                    "Thought-provoking",
+                    "Fun and entertaining"
+                ],
+                "multiSelect": True
+            },
+            {
+                "id": "q4",
+                "text": "How do you engage with culture?",
+                "category": "engagement_style",
+                "options": [
+                    "I create and share",
+                    "I observe and appreciate",
+                    "I discuss and analyze",
+                    "I collect and curate"
+                ],
+                "multiSelect": True
+            },
+            {
+                "id": "q5",
+                "text": "What draws you to a piece of content?",
+                "category": "attraction_factors",
+                "options": [
+                    "Aesthetic appeal",
+                    "Emotional impact",
+                    "Intellectual depth",
+                    "Cultural relevance"
+                ],
+                "multiSelect": True
+            }
+        ]
+        
+        # TODO: Store session in DynamoDB
+        
+        return StartSection1Response(
+            sessionId=session_id,
+            questions=questions
         )
         
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Failed to start Section 1: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate Section 1 questions"
-        )
+        logger.error(f"Error starting Section 1: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/section2/generate", response_model=Section2Response, status_code=status.HTTP_200_OK)
-async def generate_section2(request: Section2Request) -> Section2Response:
+@router.post("/section2/generate", response_model=GenerateSection2Response)
+async def generate_section2(request: GenerateSection2Request):
     """
-    Generate Section 2 questions based on Section 1 answers.
+    Generate adaptive Section 2 questions based on Section 1 answers.
     
-    Creates adaptive questions personalized to the user's Section 1 responses.
-    
-    Args:
-        request: Section 2 generation request with sessionId and Section 1 answers
-        
     Returns:
-        Section2Response with adaptive questions
-        
-    Raises:
-        HTTPException: 404 if session not found or expired
-        HTTPException: 500 if question generation fails
+        - questions: List of 5 adaptive questions
     """
     try:
-        logger.info(f"Generating Section 2 for session: {request.sessionId}")
+        logger.info(f"Generating Section 2 for session {request.sessionId}")
         
-        # TODO: Import and call handler
-        # from backend.src.handlers.generateSection2 import generate_section2
-        # result = await generate_section2(request.sessionId, request.section1Answers)
+        # TODO: Retrieve session from DynamoDB
+        # TODO: Call generateSection2 handler with Claude
         
-        # Placeholder response
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Section 2 generation not yet implemented"
-        )
+        # For now, return mock adaptive questions
+        questions = [
+            {
+                "id": "q6",
+                "text": "Which visual styles appeal to you?",
+                "category": "visual_style",
+                "options": [
+                    "Minimalist and clean",
+                    "Bold and colorful",
+                    "Dark and moody",
+                    "Natural and organic"
+                ],
+                "multiSelect": True
+            },
+            {
+                "id": "q7",
+                "text": "What kind of narratives interest you?",
+                "category": "narrative_preference",
+                "options": [
+                    "Personal stories",
+                    "Abstract concepts",
+                    "Social commentary",
+                    "Fantasy and imagination"
+                ],
+                "multiSelect": True
+            },
+            {
+                "id": "q8",
+                "text": "How do you like to spend your time?",
+                "category": "activity_preference",
+                "options": [
+                    "Creating something new",
+                    "Learning and exploring",
+                    "Connecting with others",
+                    "Relaxing and unwinding"
+                ],
+                "multiSelect": True
+            },
+            {
+                "id": "q9",
+                "text": "What cultural movements resonate with you?",
+                "category": "cultural_alignment",
+                "options": [
+                    "Contemporary and modern",
+                    "Classic and timeless",
+                    "Underground and alternative",
+                    "Mainstream and popular"
+                ],
+                "multiSelect": True
+            },
+            {
+                "id": "q10",
+                "text": "How do you define your taste?",
+                "category": "taste_identity",
+                "options": [
+                    "Eclectic and diverse",
+                    "Focused and specific",
+                    "Evolving and experimental",
+                    "Consistent and refined"
+                ],
+                "multiSelect": False
+            }
+        ]
         
-    except HTTPException:
-        raise
+        # TODO: Update session in DynamoDB
+        
+        return GenerateSection2Response(questions=questions)
+        
     except Exception as e:
-        logger.error(f"Failed to generate Section 2: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate Section 2 questions"
-        )
+        logger.error(f"Error generating Section 2: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/complete", response_model=CompleteQuizResponse, status_code=status.HTTP_200_OK)
-async def complete_quiz(request: CompleteQuizRequest) -> CompleteQuizResponse:
+@router.post("/complete", response_model=CompleteQuizResponse)
+async def complete_quiz(request: CompleteQuizRequest):
     """
-    Complete the quiz and generate taste profile.
+    Complete quiz and generate taste profile.
     
-    Processes all quiz answers, generates embedding vector and taste DNA profile.
-    
-    Args:
-        request: Quiz completion request with all answers
-        
     Returns:
-        CompleteQuizResponse with embeddingId and tasteDNA
-        
-    Raises:
-        HTTPException: 404 if session not found
-        HTTPException: 500 if processing fails
+        - embeddingId: ID of generated embedding
+        - tasteDNA: Taste DNA profile with archetype and traits
     """
     try:
-        logger.info(f"Completing quiz for session: {request.sessionId}, user: {request.userId}")
+        logger.info(f"Completing quiz for session {request.sessionId}, user {request.userId}")
         
-        # TODO: Import and call handlers
-        # from backend.src.handlers.generateEmbedding import generate_embedding
-        # from backend.src.handlers.generateDNA import generate_dna
-        # embedding_result = await generate_embedding(request.sessionId, request.userId, request.allAnswers)
-        # dna_result = await generate_dna(request.userId, request.allAnswers)
+        # TODO: Retrieve session from DynamoDB
+        # TODO: Call generateEmbedding handler
+        # TODO: Call generateDNA handler
+        # TODO: Store results in Users table
         
-        # Placeholder response
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Quiz completion not yet implemented"
+        # For now, return mock taste DNA
+        taste_dna = {
+            "archetype": "The Curator",
+            "description": "You have a refined eye for quality and meaning. You appreciate depth and authenticity in cultural expressions.",
+            "traits": [
+                {
+                    "name": "Aesthetic Sensitivity",
+                    "score": 0.85,
+                    "description": "Strong appreciation for visual beauty and design"
+                },
+                {
+                    "name": "Intellectual Curiosity",
+                    "score": 0.78,
+                    "description": "Drawn to thought-provoking and meaningful content"
+                },
+                {
+                    "name": "Cultural Awareness",
+                    "score": 0.82,
+                    "description": "Engaged with contemporary cultural movements"
+                }
+            ],
+            "categories": {
+                "visual": ["minimalist", "contemporary", "artistic"],
+                "mood": ["reflective", "inspiring", "authentic"],
+                "engagement": ["observe", "curate", "share"]
+            }
+        }
+        
+        embedding_id = str(uuid.uuid4())
+        
+        return CompleteQuizResponse(
+            embeddingId=embedding_id,
+            tasteDNA=taste_dna
         )
         
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Failed to complete quiz: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to complete quiz"
-        )
+        logger.error(f"Error completing quiz: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -6,7 +6,7 @@ import { getLogger } from '../utils/logger';
 const logger = getLogger('VibeGraphAPI');
 
 // API Base URL from environment variables
-const API_BASE_URL = import.meta.env.VITE_VIBEGRAPH_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 /**
  * Helper function to handle API requests with authentication

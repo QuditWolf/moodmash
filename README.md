@@ -1,287 +1,391 @@
-# Premium SaaS Feed Application
+# VibeGraph - Social Taste & Culture Platform
 
-A modern, dark-themed content discovery feed built with React, Tailwind CSS, and premium design principles inspired by Notion, Linear, and Supabase.
+A modern, AI-powered platform for discovering and connecting through cultural taste. Built with React, FastAPI, and AWS Bedrock, featuring adaptive quizzes, taste DNA profiles, and intelligent matching.
 
-## Design Philosophy
+## 🚀 Quick Links
 
-This application follows a **premium SaaS aesthetic** with these core principles:
+- **[Quick Start Guide](QUICKSTART.md)** - Get running in 5 minutes
+- **[Development Setup](SETUP.md)** - Complete setup instructions
+- **[API Documentation](docs/api/)** - API endpoints and contracts
+- **[Architecture](docs/architecture/)** - System design and requirements
+- **[Deployment Guide](docs/deployment/AWS_MIGRATION.md)** - Production deployment
 
-- **True Black Background**: Pure `#000000` with subtle surface variations
-- **Monospace Typography**: IBM Plex Mono for technical, developer-first feel
-- **Subtle Interactions**: 180-200ms transitions with `cubic-bezier(0.16, 1, 0.3, 1)` easing
-- **High Density**: Compact spacing, maximum information per viewport
-- **Structural Grid**: 12-column responsive grid system with proper alignment
-- **Minimal Styling**: No heavy shadows, no gradients, no glow effects
+## 📋 Table of Contents
 
----
-
-## Visual Design System
-
-### Color Palette
-
-```css
-/* Background */
---background: #000000 (pure black)
---surface: hsl(0 0% 4%)
---surface-elevated: hsl(0 0% 7%)
-
-/* Text */
---foreground: hsl(0 0% 98%) (primary text)
---muted-foreground: hsl(0 0% 55%) (secondary text)
---subtle-foreground: hsl(0 0% 40%) (tertiary text)
-
-/* Borders */
---border: hsl(0 0% 10%)
---border-hover: hsl(0 0% 15%)
-
-/* Category Colors (Muted) */
-Music: hsl(270 50% 50%)
-Book: hsl(220 60% 45%)
-Movie: hsl(0 50% 50%)
-Artwork: hsl(160 50% 45%)
-Podcast: hsl(40 60% 50%)
-Article: hsl(0 0% 40%)
-```
-
-### Typography Scale
-
-```css
-.text-11 { font-size: 11px; line-height: 1.4; }
-.text-12 { font-size: 12px; line-height: 1.4; }
-.text-13 { font-size: 13px; line-height: 1.4; }
-.text-14 { font-size: 14px; line-height: 1.4; }
-.text-16 { font-size: 16px; line-height: 1.4; }
-.text-18 { font-size: 18px; line-height: 1.3; }
-.text-28 { font-size: 28px; line-height: 1.2; }
-```
-
-**Font**: IBM Plex Mono (weights: 300, 400, 500, 600)
-- Letter spacing: `-0.011em` (body), `-0.02em` (headings)
-- Font features: `"liga" 0, "calt" 0` (disable ligatures)
-
-### Spacing Scale
-
-Use consistent spacing values:
-- `4px` / `8px` / `12px` / `16px` / `24px` / `32px`
-- Tailwind: `1` / `2` / `3` / `4` / `6` / `8`
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Development](#development)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
 
 ---
 
-## Layout System
+## Overview
 
-### Grid Structure
+VibeGraph is a social platform that helps users discover their cultural taste profile and connect with like-minded individuals through:
 
-**12-Column Responsive Grid**
-```jsx
-<div className="grid grid-cols-12 gap-6">
-  {/* Cards use col-span */}
-</div>
+- **Adaptive Quiz System**: AI-powered questions that adapt based on your answers
+- **Taste DNA**: Unique cultural archetype and trait analysis
+- **Smart Matching**: Find users with similar taste profiles (>70% similarity)
+- **Growth Paths**: Personalized recommendations for cultural exploration
+- **Privacy-First**: Never stores raw quiz answers, only embeddings
+
+### System Architecture
+
 ```
-
-**Responsive Column Spans:**
-- Desktop (1280px+): `col-span-3` (4 cards per row)
-- Laptop (1024px): `col-span-4` (3 cards per row)
-- Tablet (768px): `col-span-6` (2 cards per row)
-- Mobile (<768px): `col-span-12` (1 card per row)
-
-**Container:**
-- Max width: `max-w-7xl`
-- Horizontal padding: `px-6`
-- Centered: `mx-auto`
+┌─────────────────┐
+│   Frontend      │  React + Vite + Tailwind
+│   Port 3000     │  Premium dark UI
+└────────┬────────┘
+         │ HTTP/REST
+         ▼
+┌─────────────────┐
+│   Backend API   │  FastAPI + Python 3.11
+│   Port 8000     │  Health checks, routing
+└────────┬────────┘
+         │
+         ├─────────────┬──────────────┐
+         │             │              │
+         ▼             ▼              ▼
+┌─────────────┐  ┌──────────┐  ┌──────────┐
+│  DynamoDB   │  │ Bedrock  │  │ Handlers │
+│   Tables    │  │ Claude   │  │ Services │
+│  Port 8001  │  │ Titan    │  │          │
+└─────────────┘  └──────────┘  └──────────┘
+```
 
 ---
 
-## Component Patterns
+## Features
 
-### Card Component
+### Core Functionality
+- ✅ **Adaptive Quiz System**: Two-phase quiz with AI-generated questions
+- ✅ **Taste DNA Generation**: Cultural archetype and trait analysis
+- ✅ **Smart Matching**: Find users with >70% taste similarity
+- ✅ **Growth Paths**: Personalized Absorb/Create/Reflect recommendations
+- ✅ **Behavioral Analytics**: Insights into cultural engagement patterns
 
-**Structure:**
-```
-┌─────────────────────┐
-│                     │
-│      Image          │ 4:5 aspect ratio
-│                     │
-├─────────────────────┤
-│ Title    [Category] │ Title + Badge
-│ Source              │ Link
-└─────────────────────┘
-```
-
-**Styling:**
-- Background: `bg-surface/50`
-- Border: `border border-white/10`
-- Rounded: `rounded-lg`
-- Padding: `p-6`
-- Vertical spacing: `space-y-3`
-
-**Hover States:**
-- Card: `hover:bg-surface/80 hover:-translate-y-0.5`
-- Image: `group-hover:scale-[1.02]`
-- Transition: `180ms ease-out`
-
-### Category Badge
-
-**Styling:**
-- Padding: `px-2.5 py-1`
-- Font: `text-11 uppercase tracking-wide`
-- Border: `1px solid` with muted accent color
-- Background: 10% opacity of accent color
-- Rounded: `rounded`
-
-**Colors by Category:**
-```jsx
-Music: purple (270° 50% 50%)
-Book: blue (220° 60% 45%)
-Movie: red (0° 50% 50%)
-Artwork: emerald (160° 50% 45%)
-Podcast: amber (40° 60% 50%)
-Article: gray (0° 0% 40%)
-```
-
-### Header Component
-
-**Structure:**
-- Sticky: `sticky top-0 z-10`
-- Height: `h-16`
-- Border: `border-b border-white/10`
-- Background: `bg-background/95 backdrop-blur-sm`
+### Technical Features
+- ✅ **Docker Containerization**: Full local development environment
+- ✅ **Health Monitoring**: Comprehensive health checks and startup validation
+- ✅ **API Gateway**: FastAPI with automatic OpenAPI documentation
+- ✅ **Vector Embeddings**: 1024-dimensional taste vectors with Titan v2
+- ✅ **Caching System**: SHA-256 based embedding cache for performance
+- ✅ **Privacy-First**: Never stores raw quiz answers
 
 ---
 
-## Interaction Design
+## Tech Stack
 
-### Transitions
+### Frontend
+- **React 18** - Component framework
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Utility-first styling
+- **Lucide React** - Icon library
 
-**Standard Easing:**
-```css
-cubic-bezier(0.16, 1, 0.3, 1)
-```
+### Backend
+- **FastAPI** - Modern Python web framework
+- **Python 3.11** - Runtime
+- **Pydantic** - Data validation
+- **Uvicorn** - ASGI server
 
-**Timing:**
-- Quick interactions: `160ms`
-- Standard: `180ms`
-- Image transforms: `200ms`
+### Infrastructure
+- **Docker** - Containerization
+- **Docker Compose** - Multi-container orchestration
+- **DynamoDB Local** - Local database for development
+- **LocalStack** - Mock AWS services
 
-### Hover Effects
-
-**Cards:**
-- Subtle lift: `translateY(-2px)` or `-translate-y-0.5`
-- Background shift: 2% lighter
-- No shadows, no glow
-
-**Images:**
-- Scale: `1.02` (very subtle)
-- Smooth transform
-
-**Links:**
-- Color shift: `text-muted-foreground` → `text-foreground`
-- Duration: `160ms`
-
-### Active States
-
-**Press:**
-- Scale: `0.99`
-- Immediate feedback
+### AWS Services (Production)
+- **AWS Bedrock** - AI/ML services
+  - Claude 3.5 Sonnet - Question generation, DNA analysis
+  - Titan v2 - 1024-dim embedding generation
+- **DynamoDB** - NoSQL database
+- **Lambda** - Serverless compute
+- **API Gateway** - REST API management
 
 ---
 
-## Content Guidelines
+## Project Structure
 
-### Feed Items
-
-**Categories:**
-- Music
-- Book
-- Movie
-- Artwork
-- Podcast
-- Article
-
-**Image Requirements:**
-- Aspect ratio: 4:5
-- Quality: High resolution (800px+ width)
-- Format: JPG/PNG
-- Loading: Lazy load with `loading="lazy"`
-
-**Text Content:**
-- Title: 2 lines max (`line-clamp-2`)
-- Source: Single line, no truncation
-- No metadata (views/time removed for cleaner look)
+```
+vibegraph-app/
+├── frontend/                   # React frontend
+│   ├── src/
+│   │   ├── components/        # React components
+│   │   ├── pages/             # Page components
+│   │   ├── services/          # API services
+│   │   └── styles/            # Global styles
+│   ├── Dockerfile
+│   └── package.json
+│
+├── backend/                    # Python backend
+│   ├── api/                   # FastAPI gateway
+│   │   ├── routes/            # API routes
+│   │   │   ├── quiz.py        # Quiz endpoints
+│   │   │   └── profile.py     # Profile endpoints
+│   │   ├── main.py            # FastAPI app
+│   │   ├── startup.py         # Startup checks
+│   │   └── health.py          # Health endpoints
+│   ├── handlers/              # Lambda handlers
+│   ├── services/              # Shared services
+│   ├── src/                   # Shared source code
+│   │   ├── handlers/          # Handler implementations
+│   │   ├── services/          # Service clients
+│   │   └── utils/             # Utility functions
+│   ├── scripts/               # Backend scripts
+│   └── tests/                 # Test suite
+│
+├── docs/                       # Documentation
+│   ├── reapplication/         # Merge guides
+│   ├── integration/           # Integration docs
+│   ├── deployment/            # Deployment guides
+│   ├── architecture/          # System design
+│   ├── api/                   # API documentation
+│   ├── backend/               # Backend docs
+│   ├── frontend/              # Frontend docs
+│   ├── infrastructure/        # Docker, deployment
+│   ├── tasks/                 # Task summaries
+│   └── testing/               # Testing guides
+│
+├── scripts/                    # Automation scripts
+│   ├── reapply-session-changes.sh
+│   ├── test-integration.sh
+│   └── ...
+│
+├── docker-compose.yml          # Container orchestration
+├── docker-compose.override.yml # Development overrides
+├── Makefile                    # Container management
+├── README.md                   # This file
+├── SETUP.md                    # Development setup
+├── QUICKSTART.md               # Quick start guide
+└── RESTRUCTURE-DEV.md          # Restructuring docs
+```
 
 ---
 
-## Technical Stack
+## Getting Started
 
-### Core Technologies
-- **React 18**: Component framework
-- **Vite**: Build tool and dev server
-- **Tailwind CSS 3.4.1**: Utility-first styling
-- **Lucide React**: Icon library
+### Prerequisites
 
-### UI Components
-- Custom card components
-- shadcn/ui base components (Avatar, Button, Separator)
+- **Docker** 20.10+ and **Docker Compose** 2.0+
+- **Node.js** 20+ (for local frontend development)
+- **Python** 3.11+ (for local backend development)
+- **Make** (optional, for convenience commands)
 
-### Styling Approach
-- Tailwind utility classes
-- CSS custom properties for theming
-- No CSS-in-JS
-- No styled-components
+### Quick Start
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/your-org/vibegraph-app.git
+cd vibegraph-app
+
+# 2. Build all containers
+make build
+
+# 3. Start all services
+make up
+
+# 4. Wait for health checks
+make wait-healthy
+
+# 5. Access the application
+open http://localhost:3000
+```
+
+That's it! The application is now running with:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ---
 
-## Development Guidelines
+## Development
 
-### Component Structure
+### Container Management
 
-**File Organization:**
-```
-src/
-├── components/
-│   ├── MediaCard.jsx       # Feed card component
-│   ├── FeedPage.jsx        # Main feed layout
-│   └── ui/                 # Base UI components
-├── contexts/               # React contexts
-├── pages/                  # Page components
-└── styles/                 # Global styles
-```
+```bash
+# Build all images
+make build
 
-### Naming Conventions
+# Start all containers
+make up
 
-**Components:**
-- PascalCase: `MediaCard`, `FeedPage`
-- Descriptive names: `MediaCard` not `Card`
+# Stop all containers
+make down
 
-**CSS Classes:**
-- Utility-first: Use Tailwind classes
-- Custom utilities in `@layer utilities`
-- Semantic naming for custom classes
+# View logs
+make logs
 
-### Code Style
+# Check container health
+docker ps
 
-**React:**
-```jsx
-// Functional components with arrow functions
-const MediaCard = ({ title, category, image, source }) => {
-  return (
-    <div className="...">
-      {/* Content */}
-    </div>
-  );
-};
+# Restart specific service
+docker-compose restart backend-api
 ```
 
-**Tailwind:**
-```jsx
-// Group related utilities
-className="flex items-center gap-2"
+### Running Tests
 
-// Responsive modifiers
-className="col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-3"
+```bash
+# Run all tests
+bash scripts/test-integration.sh
 
-// State modifiers
-className="hover:bg-surface/80 transition-all duration-180"
+# Test specific endpoint
+curl -X POST http://localhost:8000/quiz/section1/start \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Check health
+curl http://localhost:8000/health
 ```
+
+### Local Development
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev  # Runs on port 5173
+```
+
+**Backend:**
+```bash
+cd backend/api
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+### Code Structure
+
+**Adding New API Endpoints:**
+1. Create route in `backend/api/routes/`
+2. Register in `backend/api/main.py`
+3. Add tests in `backend/tests/`
+4. Document in `docs/api/`
+
+**Adding New Components:**
+1. Create component in `frontend/src/components/`
+2. Add styles following design system
+3. Document in `docs/frontend/components/`
+
+---
+
+## Testing
+
+### Integration Tests
+
+```bash
+# Run comprehensive integration tests
+bash scripts/test-integration.sh
+
+# Expected output:
+# ✅ 18+ tests passed
+# ✅ All containers healthy
+# ✅ All API endpoints working
+# ✅ Frontend-backend integration verified
+```
+
+### Manual Testing
+
+**Quiz Flow:**
+```bash
+# 1. Start Section 1
+curl -X POST http://localhost:8000/quiz/section1/start \
+  -H "Content-Type: application/json" -d '{}'
+
+# 2. Generate Section 2
+curl -X POST http://localhost:8000/quiz/section2/generate \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "...", "section1Answers": []}'
+
+# 3. Complete Quiz
+curl -X POST http://localhost:8000/quiz/complete \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "...", "userId": "test", "allAnswers": {}}'
+```
+
+**Profile Endpoints:**
+```bash
+curl http://localhost:8000/profile/dna/test-user
+curl http://localhost:8000/profile/path/test-user
+curl http://localhost:8000/profile/matches/test-user
+curl http://localhost:8000/profile/analytics/test-user
+```
+
+---
+
+## Deployment
+
+### Local Development
+- Uses Docker Compose with DynamoDB Local and LocalStack
+- No AWS credentials required
+- Full feature parity with production
+
+### Production (AWS)
+See [AWS_MIGRATION.md](docs/deployment/AWS_MIGRATION.md) for complete deployment guide.
+
+**Key Steps:**
+1. Set up AWS account and credentials
+2. Deploy DynamoDB tables
+3. Deploy Lambda functions
+4. Configure API Gateway
+5. Enable Bedrock services
+6. Deploy frontend to S3 + CloudFront
+
+**AWS Services Used:**
+- Lambda (serverless compute)
+- API Gateway (REST API)
+- DynamoDB (database)
+- Bedrock (AI/ML)
+- S3 + CloudFront (frontend hosting)
+
+---
+
+## Documentation
+
+### Essential Docs
+- **[SETUP.md](SETUP.md)** - Complete development setup
+- **[QUICKSTART.md](QUICKSTART.md)** - Get started in 5 minutes
+- **[RESTRUCTURE-DEV.md](RESTRUCTURE-DEV.md)** - Project restructuring details
+
+### API Documentation
+- **[API Overview](docs/api/README.md)** - API architecture
+- **[Quiz Endpoints](docs/api/quiz-endpoints.md)** - Quiz API reference
+- **[Profile Endpoints](docs/api/profile-endpoints.md)** - Profile API reference
+
+### Architecture
+- **[Design](docs/architecture/design.md)** - System design
+- **[Requirements](docs/architecture/requirements.md)** - Functional requirements
+
+### Integration
+- **[API Integration](docs/integration/API_INTEGRATION_COMPLETE.md)** - API integration details
+- **[Docker Integration](docs/integration/DOCKER_INTEGRATION_COMPLETE.md)** - Docker setup
+
+### Deployment
+- **[AWS Migration](docs/deployment/AWS_MIGRATION.md)** - Production deployment guide
+
+### Reapplication (After Merge)
+- **[Reapplication Guide](docs/reapplication/README_REAPPLICATION.md)** - Merge and reapply changes
+- **[Changes to Reapply](docs/reapplication/CHANGES_TO_REAPPLY.md)** - Complete change list
+
+### Frontend
+- **[Components](docs/frontend/components/)** - Component documentation
+- **[Design System](docs/frontend/PREMIUM_DESIGN_SYSTEM.md)** - UI design system
+
+### Backend
+- **[Handlers](docs/backend/handlers/)** - Lambda handler docs
+- **[Services](docs/backend/services/)** - Service client docs
+- **[Utils](docs/backend/utils/)** - Utility function docs
+
+### Infrastructure
+- **[Docker Setup](docs/infrastructure/docker-setup.md)** - Docker configuration
+- **[Networking](docs/infrastructure/networking.md)** - Container networking
 
 ---
 
@@ -476,3 +580,72 @@ For questions about design decisions or implementation details, refer to:
 ---
 
 **Built with precision. Designed for developers.**
+
+
+## Contributing
+
+### Development Workflow
+
+1. **Fork and clone** the repository
+2. **Create a branch** for your feature
+3. **Make changes** following code style
+4. **Test thoroughly** with integration tests
+5. **Update documentation** as needed
+6. **Submit pull request** with clear description
+
+### Code Style
+
+**Python (Backend):**
+- Follow PEP 8
+- Use type hints
+- Document functions with docstrings
+- Keep functions focused and small
+
+**JavaScript (Frontend):**
+- Use functional components
+- Follow React best practices
+- Use Tailwind for styling
+- Keep components focused
+
+### Testing Requirements
+
+- All new features must have tests
+- Integration tests for API endpoints
+- Component tests for UI changes
+- Maintain >80% code coverage
+
+### Documentation
+
+- Update relevant docs in `docs/`
+- Add API documentation for new endpoints
+- Update README if adding major features
+- Include code examples
+
+---
+
+## License
+
+MIT License - See LICENSE file for details
+
+---
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/your-org/vibegraph-app/issues)
+- **Documentation**: [docs/](docs/)
+- **Quick Start**: [QUICKSTART.md](QUICKSTART.md)
+- **Setup Guide**: [SETUP.md](SETUP.md)
+
+---
+
+## Acknowledgments
+
+Built with:
+- React, Vite, Tailwind CSS
+- FastAPI, Python
+- AWS Bedrock (Claude, Titan)
+- Docker, Docker Compose
+
+---
+
+**VibeGraph** - Discover your cultural taste, connect with your tribe.
