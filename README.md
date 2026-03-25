@@ -358,4 +358,4 @@ Special thanks to:
 
 ---
 
-**Made with love for India's youth**
+**Made with ❤️ for India's youth**
