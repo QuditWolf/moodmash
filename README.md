@@ -6,9 +6,9 @@ An AI-powered personal taste engine that ingests your digital life (quiz respons
 
 ---
 
-## 🎯 For Judges: Quick Start
+## For Judges: Quick Start
 
-**Time Required**: 5-7 minutes  
+**Time Required**: 5-7 minutes
 **No sign-up needed**
 
 ### The 4 Flows to Test:
@@ -37,7 +37,7 @@ An AI-powered personal taste engine that ingests your digital life (quiz respons
 
 ---
 
-## 🎯 Features
+## Features
 
 1. **Taste Onboarding** — 15 emotionally resonant questions across 5 domains (music, films, visual, creative, consumption)
 2. **Taste DNA Card** — AI-generated archetype with name, vibe summary, radar chart, and taste markers
@@ -45,7 +45,7 @@ An AI-powered personal taste engine that ingests your digital life (quiz respons
 4. **Analytics Dashboard** — Goal alignment scores, domain breakdown, and AI-generated insights
 5. **Privacy Data Control** — Export and delete your data, DPDP Act 2023 compliant
 
-## 🏗️ Architecture
+## Architecture
 
 - **Frontend**: React 18 + Vite + Tailwind CSS + Recharts
 - **Backend**: FastAPI (Python) + Uvicorn
@@ -53,7 +53,7 @@ An AI-powered personal taste engine that ingests your digital life (quiz respons
 - **Database**: In-memory (swappable to DynamoDB)
 - **Content**: 65+ curated items (70%+ Indian content)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -135,10 +135,10 @@ Expected output:
 ✓ DNA generation passed
 ✓ Growth path passed
 ✓ Analytics passed
-✅ All API tests passed!
+All API tests passed!
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 moodmash/
@@ -184,7 +184,7 @@ moodmash/
 └── test_api.py               # API test script
 ```
 
-## 🎨 User Flow
+## User Flow
 
 1. **Landing** (`/`) → Clean hero with value prop + CTA
 2. **Onboarding** (`/onboard`) → 15 questions + goal selection
@@ -193,7 +193,7 @@ moodmash/
 5. **Analytics** (`/analytics/:id`) → Goal alignment + domain breakdown
 6. **Data Panel** (`/data/:id`) → Export/delete data controls
 
-## 🔌 API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -206,7 +206,7 @@ moodmash/
 | GET | `/api/data/:id` | Export user data |
 | DELETE | `/api/data/:id` | Delete user data |
 
-## 🧪 Testing
+## Testing
 
 ### Manual Testing Flow
 
@@ -237,7 +237,7 @@ curl -X POST http://localhost:8000/api/onboard \
 curl http://localhost:8000/api/dna/SESSION_ID
 ```
 
-## 🔄 Switching to AWS
+## Switching to AWS
 
 ### Enable Bedrock AI
 
@@ -265,7 +265,7 @@ curl http://localhost:8000/api/dna/SESSION_ID
 
 2. Create tables using `backend/template.yaml` (SAM)
 
-## 🎯 Design Principles
+## Design Principles
 
 1. **Direction over discovery** — We help you know what to DO with your time
 2. **Productive rest** — Entertainment and growth are fused
@@ -273,7 +273,7 @@ curl http://localhost:8000/api/dna/SESSION_ID
 4. **User agency** — You see your patterns and make conscious choices
 5. **Indian-first** — Content, personas, cultural references built for India
 
-## 🔒 Privacy
+## Privacy
 
 - Raw quiz answers are hashed and discarded immediately
 - Only anonymized taste vectors are stored
@@ -281,7 +281,7 @@ curl http://localhost:8000/api/dna/SESSION_ID
 - Users can export and delete all data
 - Aligned with India's DPDP Act 2023
 
-## 📝 Environment Variables
+## Environment Variables
 
 ```bash
 # Backend
@@ -293,7 +293,7 @@ AWS_REGION=ap-south-1            # AWS region for Bedrock/DynamoDB
 VITE_API_URL=http://localhost:8000  # Backend API URL
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Backend won't start
 ```bash
@@ -325,7 +325,7 @@ npm install
 - Verify PYTHONPATH is set: `PYTHONPATH=. uvicorn backend.main:app`
 - Ensure all handler files exist in `backend/functions/`
 
-## 🚢 Deployment
+## Deployment
 
 ### Frontend (AWS Amplify)
 ```bash
@@ -344,11 +344,11 @@ sam build
 sam deploy --guided
 ```
 
-## 📄 License
+## License
 
 MIT License - see LICENSE file for details
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 Built for the AI for Bharat Hackathon by Team Smooth Landing.
 
@@ -358,4 +358,4 @@ Special thanks to:
 
 ---
 
-**Made with ❤️ for India's youth**
+**Made with love for India's youth**
