@@ -1,45 +1,42 @@
-import { useState, useEffect } from 'react';
-import Sidebar from './components/Sidebar';
-import FeedPage from './components/FeedPage';
-import OnboardingPage from './components/onboarding/OnboardingPage';
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
+import Landing from './pages/Landing'
+import Feed from './pages/Feed'
+import OnboardingPage from './components/Onboarding/OnboardingPage'
+import DNACard from './components/DNACard/DNACard'
+import GrowthPath from './components/GrowthPath/GrowthPath'
+import Analytics from './components/Analytics/Analytics'
+import DataPanel from './components/DataPanel/DataPanel'
+import Sidebar from './components/common/Sidebar'
+import NotFound from './pages/NotFound'
 
-function App() {
-  const [showOnboarding, setShowOnboarding] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Check if user has completed onboarding
-    const tasteProfile = localStorage.getItem('taste_profile');
-    if (tasteProfile) {
-      setShowOnboarding(false);
-    }
-    setIsLoading(false);
-  }, []);
-
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-13 text-muted-foreground font-mono">Loading...</div>
-      </div>
-    );
-  }
-
-  if (showOnboarding) {
-    return <OnboardingPage onComplete={handleOnboardingComplete} />;
-  }
-
+function AppLayout() {
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <main className="flex-1 ml-64">
-        <FeedPage />
+      <main className="flex-1 ml-0 md:ml-64">
+        <Outlet />
       </main>
     </div>
-  );
+  )
 }
 
-export default App;
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/onboard" element={<OnboardingPage />} />
+        <Route element={<AppLayout />}>
+          <Route path="/feed" element={<Feed />} />
+          <Route path="/dna/:id" element={<DNACard />} />
+          <Route path="/path/:id" element={<GrowthPath />} />
+          <Route path="/analytics/:id" element={<Analytics />} />
+          <Route path="/data/:id" element={<DataPanel />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+export default App
